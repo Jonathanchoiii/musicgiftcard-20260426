@@ -1,0 +1,67 @@
+{
+  "tracks": [
+    {
+      "trackName": "Help!",
+      "artistName": "The Beatles",
+      "artistId": 136975,
+      "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/1a/19/db/1a19db26-17ad-b986-11a9-f72ac7a6194b/18UMGIM31214.rgb.jpg/100x100bb.jpg",
+      "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/90/c1/c1/90c1c133-02e3-255d-3a0d-e70c5a404bc5/mzaf_14127376946151186172.plus.aac.p.m4a"
+    },
+    {
+      "trackName": "Help!",
+      "artistName": "Snooze Tunes for Babies",
+      "artistId": 373854956,
+      "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music6/v4/17/68/b0/1768b066-c557-05bd-9331-7f9fa9e8f924/888608741675.jpg/100x100bb.jpg",
+      "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/84/b5/de/84b5de9c-3f9c-45aa-d512-02f601a2a815/mzaf_15745020784965635510.plus.aac.p.m4a"
+    },
+    {
+      "trackName": "Help (Glee Cast Version)",
+      "artistName": "Glee Cast",
+      "artistId": 315816847,
+      "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/2a/90/0d/2a900d07-6369-262b-2166-b37c9643d44c/886444201421.jpg/100x100bb.jpg",
+      "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/d6/00/f1/d600f13c-3834-aafa-9f06-a0a6f45523e4/mzaf_10786530010104579254.plus.aac.p.m4a"
+    },
+    {
+      "trackName": "Help (Aelonia Remix)",
+      "artistName": "Papa Roach",
+      "artistId": 3445763,
+      "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/e3/5d/fc/e35dfc5d-68a9-b432-c66c-cfadf08fa591/849320093701.png/100x100bb.jpg",
+      "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/67/b5/20/67b5202c-c749-cae0-aa34-24c5eed420a8/mzaf_4934756622117781573.plus.aac.p.m4a"
+    },
+    {
+      "trackName": "HELP!",
+      "artistName": "Brandon Lake",
+      "artistId": 1050382282,
+      "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/26/78/47/267847a4-8e0b-f038-4346-6d47d5df33bb/196626825513.jpg/100x100bb.jpg",
+      "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview122/v4/02/d0/fa/02d0fa33-436e-2746-0218-4384bd20e3a7/mzaf_17005970367818297672.plus.aac.p.m4a"
+    },
+    {
+      "trackName": "Help (feat. Lecrae)",
+      "artistName": "Erica Campbell",
+      "artistId": 61031374,
+      "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music114/v4/20/4a/fb/204afb1e-e7e9-802d-44ac-e679ead71bd9/2607.jpg/100x100bb.jpg",
+      "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/4a/ce/02/4ace0214-c4b0-1ba6-fdcf-7ad6af7bdd08/mzaf_15871483174477413645.plus.aac.p.m4a"
+    },
+    {
+      "trackName": "Anti-Hero",
+      "artistName": "Taylor Swift",
+      "artistId": 159260351,
+      "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/3d/01/f2/3d01f2e5-5a08-835f-3d30-d031720b2b80/22UM1IM07364.rgb.jpg/100x100bb.jpg",
+      "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/1d/56/2a/1d562a07-dc5f-a9c0-1f36-2051a8c14eb7/mzaf_7214829135431340590.plus.aac.p.m4a"
+    },
+    {
+      "trackName": "Shape of You",
+      "artistName": "Ed Sheeran",
+      "artistId": 183313439,
+      "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/15/e6/e8/15e6e8a4-4190-6a8b-86c3-ab4a51b88288/190295851286.jpg/100x100bb.jpg",
+      "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/44/c7/4f/44c74f0d-72dc-6143-d4d0-ba14d661ca0d/mzaf_9566898362556366703.plus.aac.p.m4a"
+    },
+    {
+      "trackName": "Classical Piano Music for Baby Sleep",
+      "artistName": "Baby Lullaby Academy",
+      "artistId": 940778269,
+      "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/ab/cb/17/abcb1725-a2e0-c4bc-8666-136f5782635a/859714545211_cover.jpg/100x100bb.jpg",
+      "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/8d/eb/86/8deb8696-4065-9ba8-0ad4-49b625d13c5e/mzaf_16926347457174832446.plus.aac.p.m4a"
+    }
+  ]
+}

@@ -1406,6 +1406,17 @@
     'soundtrack movie hits'
   ];
   const ITUNES = 'https://itunes.apple.com/search';
+  const ITUNES_SEARCH_TIMEOUT_MS = 24000;
+
+  function fetchWithTimeout(url, ms) {
+    const ac = new AbortController();
+    const t = window.setTimeout(function () {
+      ac.abort();
+    }, ms);
+    return fetch(url, { signal: ac.signal }).finally(function () {
+      window.clearTimeout(t);
+    });
+  }
 
   const coverCanvas = document.getElementById('coverCanvas');
   const coatCanvas = document.getElementById('coatCanvas');
@@ -1550,6 +1561,8 @@
   let results = [];
   let resultIndex = -1;
   let keywordIndex = Math.floor(Math.random() * KEYWORDS.length);
+  /** 内置兜底曲目（同源 JSON），在线列表不可用时填充 */
+  let cachedFallbackPool = null;
 
   let pointerDown = false;
   let lastX = 0, lastY = 0;
@@ -2105,12 +2118,32 @@
   }
 
   async function fetchItunes(term) {
-    const q = encodeURIComponent(term.trim());
-    const url = `${ITUNES}?term=${q}&media=music&entity=song&limit=50`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('iTunes HTTP ' + res.status);
-    const data = await res.json();
-    return data.results || [];
+    const trimmed = term.trim();
+    const q = encodeURIComponent(trimmed);
+    const directUrl = `${ITUNES}?term=${q}&media=music&entity=song&limit=50`;
+    const proxyUrl = '/api/itunes-search?term=' + encodeURIComponent(trimmed);
+
+    async function parseSearchResponse(res) {
+      if (!res.ok) throw new Error('音乐目录 HTTP ' + res.status);
+      const data = await res.json();
+      if (data && data.error && !Array.isArray(data.results)) {
+        throw new Error(String(data.error));
+      }
+      return data.results || [];
+    }
+
+    async function tryRows(url) {
+      const res = await fetchWithTimeout(url, ITUNES_SEARCH_TIMEOUT_MS);
+      return parseSearchResponse(res);
+    }
+
+    try {
+      const viaProxy = await tryRows(proxyUrl);
+      if (viaProxy.length) return viaProxy;
+    } catch (_) {}
+
+    const viaDirect = await tryRows(directUrl);
+    return viaDirect;
   }
 
   function pickNextKeyword() {
@@ -2150,13 +2183,51 @@
     return items.slice(0, 12);
   }
 
+  async function loadFallbackPool() {
+    if (cachedFallbackPool && cachedFallbackPool.length) return cachedFallbackPool;
+    const res = await fetchWithTimeout('fallback-tracks.json', 14000);
+    if (!res.ok) throw new Error('兜底曲目 HTTP ' + res.status);
+    const j = await res.json();
+    const arr = Array.isArray(j.tracks)
+      ? j.tracks
+      : Array.isArray(j)
+        ? j
+        : [];
+    cachedFallbackPool = arr.filter(function (r) {
+      return r.previewUrl && r.artworkUrl100;
+    });
+    return cachedFallbackPool;
+  }
+
   async function loadTrackList() {
     const term = KEYWORDS[keywordIndex];
-    const raw = await fetchItunes(term);
-    const filtered = raw.filter(function (r) { return r.previewUrl && r.artworkUrl100; });
+    let raw = [];
+    try {
+      raw = await fetchItunes(term);
+    } catch (e) {
+      console.warn('iTunes 检索失败，将尝试兜底曲目', e);
+      raw = [];
+    }
+    const filtered = raw.filter(function (r) {
+      return r.previewUrl && r.artworkUrl100;
+    });
     results = diversifyByArtist(filtered, 6);
     shuffle(results);
     resultIndex = -1;
+
+    if (results.length === 0) {
+      try {
+        const pool = await loadFallbackPool();
+        if (pool.length) {
+          results = diversifyByArtist(pool.slice(), 6);
+          shuffle(results);
+          resultIndex = -1;
+        }
+      } catch (e) {
+        console.warn('兜底曲目加载失败', e);
+      }
+    }
+
     if (results.length === 0) {
       pickNextKeyword();
       throw new Error('暂无可用曲目，请刷新重试。');
@@ -2164,20 +2235,48 @@
   }
 
   function applyTrack(r) {
-    const art = upscaleArtwork(r.artworkUrl100);
+    const artDirect = upscaleArtwork(r.artworkUrl100);
+    const proxySrc = '/api/proxy-artwork?url=' + encodeURIComponent(artDirect);
+    const useHttps =
+      typeof location !== 'undefined' && location.protocol === 'https:';
     return new Promise(function (resolve, reject) {
       const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = function () {
+      let settled = false;
+      function finish() {
+        if (settled) return;
+        settled = true;
         resizeCanvases();
         coverCtx.clearRect(0, 0, coverCanvas.width, coverCanvas.height);
         coverCtx.drawImage(img, 0, 0, coverCanvas.width, coverCanvas.height);
         refreshCoverPixels();
         rebuildGiftInnerParticles();
         resolve();
+      }
+      function fail() {
+        if (settled) return;
+        settled = true;
+        reject(new Error('封面加载失败'));
+      }
+      img.onload = function () {
+        finish();
       };
-      img.onerror = function () { reject(new Error('封面加载失败')); };
-      img.src = art;
+      if (useHttps) {
+        img.onerror = function () {
+          img.onerror = function () {
+            fail();
+          };
+          img.crossOrigin = 'anonymous';
+          img.src = artDirect;
+        };
+        img.removeAttribute('crossOrigin');
+        img.src = proxySrc;
+      } else {
+        img.crossOrigin = 'anonymous';
+        img.onerror = function () {
+          fail();
+        };
+        img.src = artDirect;
+      }
     });
   }
 
@@ -3139,7 +3238,20 @@
         document.documentElement.classList.remove('env-prelude');
         applyEnvelopeTheme(DEFAULT_ENV_THEME);
         if (envTitle) envTitle.textContent = '加载失败';
-        if (envLede) envLede.textContent = err.message || String(err);
+        var raw = (err && err.message) || String(err || '');
+        var low = raw.toLowerCase();
+        var friendly = raw;
+        if (err && err.name === 'AbortError') {
+          friendly = '请求超时，请检查网络后重试。';
+        } else if (
+          /load failed|failed to fetch|networkerror|network request failed|aborted|timeout/i.test(
+            low
+          )
+        ) {
+          friendly =
+            '网络不稳定或无法访问音乐服务，已尝试线路切换。请换 Wi‑Fi/蜂窝数据或稍后再试。';
+        }
+        if (envLede) envLede.textContent = friendly;
         if (envFoot) envFoot.textContent = '请刷新或检查网络';
         if (envKicker) envKicker.textContent = '';
         lowerShield();
