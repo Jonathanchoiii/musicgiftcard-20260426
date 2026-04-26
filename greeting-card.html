@@ -1,0 +1,3153 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <title>涂层贺卡</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --gray-50: #f5f5f7;
+      --gray-100: #e8e8ed;
+      --gray-400: #aeaeb2;
+      --gray-500: #86868b;
+      --gray-800: #3a3a3c;
+      --gray-900: #1d1d1f;
+      --blue-fill: #eff6ff;
+      --blue-fill-hover: #dbeafe;
+      --blue-text: #2563eb;
+      --line: rgba(0, 0, 0, 0.06);
+      --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      --ticket-bg: #2a2a2a;
+      --ticket-fg: #e8e4dc;
+      --ticket-muted: rgba(232, 228, 220, 0.58);
+      --ticket-dim: rgba(232, 228, 220, 0.38);
+      --ticket-line: rgba(232, 228, 220, 0.12);
+      --ticket-line-strong: rgba(232, 228, 220, 0.2);
+      --ticket-mono: "Space Mono", ui-monospace, "SFMono-Regular", Menlo, Monaco, monospace;
+      --radius-card: 12px;
+      --env-card-w: min(92vw, 400px);
+      --env-card-h: min(88dvh, 700px);
+      --env-card-min-h: min(580px, 88dvh);
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      min-height: 100dvh;
+      overflow: hidden;
+      overscroll-behavior: none;
+      overscroll-behavior-y: contain;
+      font-family: var(--font);
+      background-color: var(--gray-50);
+      color: var(--gray-900);
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .gift-root {
+      min-height: 100dvh;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: calc(16px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom));
+    }
+
+    .gift-root:not(.is-revealed) {
+      position: fixed;
+      left: -200vw;
+      top: 0;
+      width: 100vw;
+      max-width: none;
+      z-index: -2;
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+      filter: blur(10px);
+      transform: translateY(18px) scale(0.985);
+    }
+
+    .gift-root.is-revealed {
+      position: relative;
+      left: auto;
+      top: auto;
+      z-index: 1;
+      visibility: visible;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+      filter: none;
+      transition:
+        opacity 0.72s cubic-bezier(0.25, 1, 0.45, 1),
+        transform 0.72s cubic-bezier(0.25, 1, 0.45, 1),
+        filter 0.55s ease;
+    }
+
+    .envelope-overlay {
+      --env-bg: var(--ticket-bg);
+      --env-fg: var(--ticket-fg);
+      --env-muted: var(--ticket-muted);
+      --env-line: var(--ticket-line);
+      --env-accent: var(--ticket-fg);
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      isolation: isolate;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: calc(20px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
+      background: transparent;
+      color: var(--env-fg);
+      font-family: var(--ticket-mono);
+      opacity: 1;
+      transition: opacity 0.7s cubic-bezier(0.33, 1, 0.32, 1);
+    }
+
+    /* 离场动效只作用在信封卡片（与下方 gift-card 同宽），不带动整层 fixed 视口 */
+    .env-fold-scene.is-exit-fade-up {
+      pointer-events: none;
+      opacity: 0;
+      transform: translate3d(0, -36px, 0) scale(0.988);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .envelope-overlay {
+        transition-duration: 0.01ms;
+        transition-delay: 0s !important;
+      }
+      .env-fold-scene {
+        transition-duration: 0.01ms;
+        transition-delay: 0s !important;
+      }
+    }
+
+    .envelope-overlay.is-hiding {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .env-fold-scene {
+      position: relative;
+      z-index: 1;
+      width: var(--env-card-w);
+      max-width: 100%;
+    }
+
+    .env-fold-card {
+      position: relative;
+      width: 100%;
+      height: var(--env-card-h);
+      min-height: var(--env-card-min-h);
+      overflow: hidden;
+      border-radius: var(--radius-card);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .env-prelude-visual {
+      position: relative;
+      flex: 0 0 clamp(150px, 30vh, 220px);
+      width: 100%;
+      min-height: 0;
+      overflow: hidden;
+      isolation: isolate;
+      background-color: var(--ticket-bg);
+      border-bottom: 1px solid rgba(232, 228, 220, 0.1);
+      border-top-left-radius: var(--radius-card);
+      border-top-right-radius: var(--radius-card);
+    }
+
+    /* 光晕 + 扫光叠在 mesh 之上（mesh 曾挡住 z-0 伪元素，看起来像 shader 未播放） */
+    .env-prelude-visual::before {
+      content: "";
+      position: absolute;
+      inset: -45%;
+      z-index: 1;
+      pointer-events: none;
+      will-change: transform, filter;
+      background:
+        radial-gradient(ellipse 75% 60% at 18% 42%, rgba(130, 230, 255, 0.92) 0%, transparent 58%),
+        radial-gradient(ellipse 65% 55% at 88% 28%, rgba(185, 255, 115, 0.88) 0%, transparent 52%),
+        radial-gradient(ellipse 95% 75% at 48% 95%, rgba(255, 255, 255, 0.72) 0%, transparent 48%),
+        linear-gradient(155deg, #6ec8e8 0%, #e8f4ff 42%, #9fe85c 100%);
+      animation: envPreludeAuraMove 11s ease-in-out infinite alternate;
+      animation-delay: -4.2s;
+    }
+
+    @keyframes envPreludeAuraMove {
+      0% {
+        transform: translate3d(-7%, -5%, 0) rotate(-2.5deg) scale(1.06);
+        filter: saturate(1.05) hue-rotate(0deg);
+      }
+      100% {
+        transform: translate3d(9%, 6%, 0) rotate(2.5deg) scale(1.14);
+        filter: saturate(1.15) hue-rotate(12deg);
+      }
+    }
+
+    .env-prelude-visual::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      mix-blend-mode: soft-light;
+      opacity: 0.55;
+      will-change: opacity, background-position;
+      background: linear-gradient(
+        118deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.22) 42%,
+        transparent 78%
+      );
+      background-size: 220% 220%;
+      animation: envPreludeSheen 5.2s ease-in-out infinite;
+      animation-delay: -2.6s;
+    }
+
+    @keyframes envPreludeSheen {
+      0% { background-position: 8% 40%; opacity: 0.35; }
+      50% { opacity: 0.75; }
+      100% { background-position: 92% 60%; opacity: 0.4; }
+    }
+
+    .env-prelude-mesh {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: 50% 50%;
+      display: block;
+      pointer-events: none;
+      will-change: transform;
+      transform: scale(1.06);
+      animation: envPreludeMeshDrift 14s ease-in-out infinite alternate;
+      animation-delay: -5.5s;
+    }
+
+    @keyframes envPreludeMeshDrift {
+      0% { transform: scale(1.04) translate3d(-2.8%, -1.8%, 0); }
+      100% { transform: scale(1.12) translate3d(2.4%, 1.6%, 0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .env-prelude-visual::before,
+      .env-prelude-visual::after {
+        animation: none;
+      }
+      .env-prelude-visual::before {
+        transform: none;
+        filter: none;
+      }
+      .env-prelude-visual::after {
+        opacity: 0.45;
+        background-position: 50% 50%;
+      }
+      .env-prelude-mesh {
+        animation: none;
+        transform: none;
+      }
+      .env-visual-overlay-text {
+        animation: none;
+      }
+    }
+
+    .env-visual-overlay-text {
+      position: absolute;
+      top: 1.25rem;
+      left: 1.25rem;
+      font-size: 0.68rem;
+      line-height: 1.45;
+      letter-spacing: 0.22em;
+      opacity: 0.9;
+      pointer-events: none;
+      z-index: 3;
+      color: var(--ticket-fg);
+      text-shadow:
+        0 0 18px rgba(0, 0, 0, 0.55),
+        0 1px 2px rgba(0, 0, 0, 0.4);
+      animation: envPreludeTextDrift 7s ease-in-out infinite alternate;
+    }
+
+    @keyframes envPreludeTextDrift {
+      0% { transform: translate3d(0, 0, 0); opacity: 0.86; }
+      100% { transform: translate3d(0.2rem, 0.12rem, 0); opacity: 0.96; }
+    }
+
+    .env-visual-overlay-text span {
+      display: block;
+    }
+
+    .env-visual-overlay-text .env-visual-tag {
+      padding-left: 0.35rem;
+      margin-top: 6px;
+      font-size: 0.58rem;
+      letter-spacing: 0.18em;
+      opacity: 0.48;
+    }
+
+    .env-prelude-panel {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      min-width: 0;
+    }
+
+    .env-prelude-panel .env-fold-base,
+    .env-prelude-panel .env-fold-flap {
+      border-radius: 0;
+      border-bottom-left-radius: var(--radius-card);
+      border-bottom-right-radius: var(--radius-card);
+    }
+
+    .env-fold-base {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse 120% 80% at 20% 0%, rgba(255, 255, 255, 0.06) 0%, transparent 55%),
+        radial-gradient(ellipse 90% 70% at 100% 80%, rgba(255, 255, 255, 0.04) 0%, transparent 50%),
+        radial-gradient(ellipse 70% 50% at 0% 100%, rgba(0, 0, 0, 0.35) 0%, transparent 55%),
+        linear-gradient(165deg, #2e2e2e 0%, #1a1a1a 48%, #141414 100%);
+      border: 1px solid var(--ticket-line-strong);
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.65);
+    }
+
+    .env-fold-flap {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      border-radius: var(--radius-card);
+      background: var(--ticket-bg);
+      color: var(--ticket-fg);
+      border: 1px solid var(--ticket-line-strong);
+      box-shadow:
+        0 0 0 1px rgba(0, 0, 0, 0.35),
+        0 20px 50px rgba(0, 0, 0, 0.55);
+      transition: opacity 0.32s ease;
+    }
+
+    .env-fold-flap.is-hiding {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .env-fold-flap-inner {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: clamp(12px, 3vw, 20px);
+      padding: clamp(18px, 4vw, 26px) clamp(16px, 4vw, 24px) clamp(16px, 3vw, 22px);
+      box-sizing: border-box;
+    }
+
+    .env-kicker {
+      margin: 0;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: var(--ticket-dim);
+    }
+
+    .env-title {
+      margin: 0;
+      font-size: clamp(22px, 5.5vw, 32px);
+      font-weight: 700;
+      line-height: 1.12;
+      letter-spacing: 0.06em;
+      max-width: 16ch;
+    }
+
+    .env-lede {
+      margin: 0;
+      font-size: clamp(12px, 3vw, 14px);
+      font-weight: 400;
+      line-height: 1.5;
+      color: var(--ticket-muted);
+      max-width: 32ch;
+    }
+
+    .envelope-seal {
+      position: relative;
+      align-self: center;
+      margin-top: auto;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 1px solid var(--ticket-line-strong);
+      background: radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.06), transparent 55%),
+        linear-gradient(160deg, #1f1f1f 0%, #121212 100%);
+      color: var(--ticket-fg);
+      cursor: pointer;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow:
+        0 0 0 1px rgba(0, 0, 0, 0.45),
+        0 16px 40px rgba(0, 0, 0, 0.5);
+      transition:
+        transform 0.45s cubic-bezier(0.33, 1, 0.32, 1),
+        opacity 0.35s ease,
+        box-shadow 0.35s ease;
+    }
+
+    .envelope-seal__ring {
+      position: absolute;
+      inset: 9px;
+      border-radius: 50%;
+      border: 1px solid var(--ticket-line);
+      opacity: 0.75;
+      pointer-events: none;
+    }
+
+    .envelope-seal__glyph {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 0;
+      opacity: 0.75;
+      transform: translateY(-1px);
+    }
+
+    .envelope-seal__glyph .envelope-seal__ic {
+      width: 26px;
+      height: 30px;
+      display: block;
+    }
+
+    .envelope-seal:hover {
+      transform: scale(1.05);
+      box-shadow:
+        0 0 0 1px rgba(232, 228, 220, 0.12),
+        0 20px 48px rgba(0, 0, 0, 0.55);
+    }
+
+    .envelope-seal:active {
+      transform: scale(0.96);
+    }
+
+    .envelope-seal:focus-visible {
+      outline: 2px solid var(--ticket-fg);
+      outline-offset: 5px;
+    }
+
+    .env-foot {
+      align-self: center;
+      margin-top: 4px;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: var(--ticket-dim);
+    }
+
+    html.env-prelude,
+    html.env-prelude body {
+      background-color: var(--env-prelude-bg, #0a0a0a);
+    }
+
+    html.env-prelude .particle {
+      opacity: 0.06;
+      filter: blur(0.5px);
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .gift-card {
+      position: relative;
+      width: var(--env-card-w);
+      max-width: 100%;
+      height: var(--env-card-h);
+      min-height: var(--env-card-min-h);
+      background: var(--ticket-bg);
+      color: var(--ticket-fg);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      border: 1px solid var(--ticket-line-strong);
+      box-shadow: 0 28px 72px rgba(0, 0, 0, 0.72);
+      display: flex;
+      flex-direction: column;
+      font-family: var(--ticket-mono);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    @media (min-width: 600px) {
+      .gift-card {
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.82);
+      }
+    }
+
+    .gift-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.04) 0%, transparent 42%, rgba(0, 0, 0, 0.12) 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .gift-card-fx {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .gift-card-fx-curves {
+      position: absolute;
+      inset: -25%;
+      opacity: 0.42;
+      background:
+        radial-gradient(ellipse 55% 40% at 12% 35%, rgba(255, 255, 255, 0.09) 0%, transparent 52%),
+        radial-gradient(ellipse 45% 38% at 88% 22%, rgba(255, 255, 255, 0.05) 0%, transparent 48%),
+        radial-gradient(ellipse 70% 55% at 70% 88%, rgba(255, 255, 255, 0.04) 0%, transparent 50%),
+        radial-gradient(ellipse 50% 60% at 0% 75%, rgba(0, 0, 0, 0.2) 0%, transparent 45%);
+      animation: giftFxDrift 14s ease-in-out infinite alternate;
+    }
+
+    @keyframes giftFxDrift {
+      0% {
+        transform: translate(-1.5%, -1%) rotate(-0.8deg) scale(1);
+        opacity: 0.36;
+      }
+      100% {
+        transform: translate(1.8%, 1.2%) rotate(0.9deg) scale(1.03);
+        opacity: 0.5;
+      }
+    }
+
+    @keyframes giftFxShimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .gift-card-fx-vignette {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 95% 75% at 50% 42%, transparent 32%, rgba(0, 0, 0, 0.14) 100%),
+        linear-gradient(195deg, rgba(0, 0, 0, 0.08) 0%, transparent 38%, transparent 62%, rgba(255, 255, 255, 0.04) 100%);
+      mix-blend-mode: multiply;
+      animation: giftFxGlow 7s ease-in-out infinite alternate;
+      opacity: 0.85;
+    }
+
+    @keyframes giftFxGlow {
+      0% { opacity: 0.72; filter: brightness(1); }
+      100% { opacity: 0.95; filter: brightness(1.06); }
+    }
+
+    .gift-inner {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      padding: clamp(12px, 3cqi, 18px) clamp(12px, 3.2cqi, 20px) clamp(10px, 2.2cqi, 14px);
+      container-type: size;
+      container-name: gift;
+      isolation: isolate;
+    }
+
+    /* 背景：扫光在下，封面主色弥散层与粒子在上（相对 gift-inner 内容区） */
+    .gift-inner-fx {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      /* 整层装饰不参与命中，避免子项默认 auto 挡 canvas */
+      pointer-events: none;
+      overflow: hidden;
+      border-radius: inherit;
+      --alb-0: 120 140 160;
+      --alb-1: 90 85 95;
+      --alb-2: 60 58 62;
+      --alb-3: 140 130 118;
+      --alb-audio: 0.5;
+    }
+
+    .gift-inner-fx-sweep {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background: linear-gradient(118deg, transparent 0%, rgba(255, 255, 255, 0.045) 45%, rgba(255, 255, 255, 0.07) 50%, rgba(255, 255, 255, 0.035) 55%, transparent 100%);
+      background-size: 220% 100%;
+      animation: giftFxShimmer 5.2s linear infinite;
+      mix-blend-mode: soft-light;
+      opacity: 0.55;
+    }
+
+    .gift-inner-fx-album {
+      position: absolute;
+      inset: -28%;
+      z-index: 1;
+      pointer-events: none;
+      mix-blend-mode: screen;
+      opacity: calc(0.26 + var(--alb-audio, 0.5) * 0.26);
+      animation: giftInnerAlbumMeshDrift 22s ease-in-out infinite alternate;
+      background:
+        radial-gradient(ellipse 72% 58% at 26% 36%, rgb(var(--alb-0) / 0.5) 0%, transparent 58%),
+        radial-gradient(ellipse 68% 52% at 78% 28%, rgb(var(--alb-1) / 0.42) 0%, transparent 55%),
+        radial-gradient(ellipse 90% 70% at 48% 84%, rgb(var(--alb-2) / 0.38) 0%, transparent 52%),
+        radial-gradient(ellipse 55% 45% at 12% 72%, rgb(var(--alb-3) / 0.32) 0%, transparent 50%);
+    }
+
+    @keyframes giftInnerAlbumMeshDrift {
+      0% {
+        transform: translate3d(-2.5%, -1.8%, 0) scale(1.02);
+        filter: saturate(1.02) hue-rotate(-4deg);
+      }
+      100% {
+        transform: translate3d(2.2%, 2.4%, 0) scale(1.08);
+        filter: saturate(1.12) hue-rotate(6deg);
+      }
+    }
+
+    .gift-inner-album-blob {
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+      will-change: transform, opacity;
+      mix-blend-mode: screen;
+      animation: giftInnerAlbumBlobDrift ease-in-out infinite;
+    }
+
+    @keyframes giftInnerAlbumBlobDrift {
+      0% { transform: translate3d(var(--abx0), var(--aby0), 0) scale(1); opacity: var(--ao0); }
+      50% { transform: translate3d(var(--abx1), var(--aby1), 0) scale(1.12); opacity: var(--ao1); }
+      100% { transform: translate3d(var(--abx0), var(--aby0), 0) scale(1); opacity: var(--ao0); }
+    }
+
+    .gift-inner-particles {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .gift-inner-particle {
+      position: absolute;
+      border-radius: 50%;
+      will-change: transform;
+      opacity: 0.09;
+      mix-blend-mode: screen;
+      pointer-events: none;
+      animation: giftInnerParticleDrift ease-in-out infinite;
+    }
+
+    @keyframes giftInnerParticleDrift {
+      0% { transform: translate3d(var(--dx0), var(--dy0), 0) scale(1); }
+      50% { transform: translate3d(var(--dx1), var(--dy1), 0) scale(1.1); }
+      100% { transform: translate3d(var(--dx0), var(--dy0), 0) scale(1); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .gift-inner-fx-sweep {
+        animation: none;
+      }
+      .gift-inner-fx-album {
+        animation: none;
+        transform: none;
+        filter: none;
+      }
+      .gift-inner-album-blob {
+        animation: none;
+      }
+      .gift-inner-particle {
+        animation: none;
+      }
+    }
+
+    .btn-track {
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      border: none;
+      background: transparent;
+      color: var(--ticket-fg);
+      opacity: 0.4;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: manipulation;
+      border-radius: 10px;
+      transition: opacity 0.2s ease, background 0.2s ease, color 0.2s ease;
+    }
+
+    .btn-track:hover {
+      opacity: 0.62;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .btn-track:active {
+      opacity: 0.85;
+    }
+
+    .btn-track:focus-visible {
+      outline: 2px solid var(--ticket-fg);
+      outline-offset: 2px;
+      opacity: 0.75;
+    }
+
+    .btn-track svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    .btn-mute {
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid var(--ticket-line-strong);
+      background: rgba(0, 0, 0, 0.2);
+      color: var(--ticket-fg);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: manipulation;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+    .btn-mute:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: #fff;
+      border-color: rgba(232, 228, 220, 0.28);
+    }
+    .btn-mute.is-muted {
+      color: var(--ticket-dim);
+    }
+    .btn-mute .ic-vol-off {
+      display: none;
+    }
+    .btn-mute.is-muted .ic-vol-on {
+      display: none;
+    }
+    .btn-mute.is-muted .ic-vol-off {
+      display: block;
+    }
+    .btn-mute svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .seg {
+      display: inline-flex;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: #f5f5f7;
+    }
+    .seg button {
+      border: none;
+      background: transparent;
+      color: var(--gray-500);
+      padding: 9px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      touch-action: manipulation;
+    }
+    .seg button.active {
+      background: #fff;
+      color: var(--gray-900);
+      font-weight: 600;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    }
+
+    .btn {
+      border: none;
+      background: var(--blue-fill);
+      color: var(--blue-text);
+      padding: 9px 18px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      touch-action: manipulation;
+      transition: background 0.15s ease;
+    }
+    .btn:hover {
+      background: var(--blue-fill-hover);
+    }
+    .btn:active { transform: scale(0.98); }
+
+    .gift-card-shell {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .layout {
+      position: relative;
+      z-index: 12;
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: clamp(12px, 3cqi, 18px);
+      margin-top: 0;
+      padding-top: clamp(44px, 10cqi, 58px);
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      /* 仅占布局空间，不拦截指针；否则盖住下方 gift-play-bleed 的 canvas */
+      pointer-events: none;
+      /* 不再铺底色涂层，歌名区直接叠在卡片背景上 */
+      background: transparent;
+    }
+
+    /* 操作区：在 gift-inner 内取最大内接正方形 1:1，叠在背景粒子之上 */
+    .gift-play-bleed {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .gift-play-bleed .card-wrap {
+      pointer-events: auto;
+      position: relative;
+      flex: 0 0 auto;
+      margin: 0;
+      width: min(92vmin, 100%);
+      height: min(92vmin, 100%);
+      max-width: 100%;
+      max-height: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 8px;
+      overflow: hidden;
+      touch-action: none;
+      background: #1f1f1f;
+      border: 1px solid var(--ticket-line);
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+    }
+
+    @supports (width: 1cqmin) {
+      .gift-play-bleed .card-wrap {
+        width: min(100cqmin, 100%);
+        height: min(100cqmin, 100%);
+      }
+    }
+
+    .gift-chrome {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      pointer-events: none;
+    }
+
+    .gift-chrome .btn-mute,
+    .gift-chrome .btn-track {
+      pointer-events: auto;
+      position: absolute;
+    }
+
+    .gift-chrome .btn-mute {
+      top: clamp(10px, 2.4cqi, 18px);
+      right: clamp(10px, 2.8cqi, 20px);
+    }
+
+    .gift-chrome .btn-track-prev {
+      left: clamp(6px, 2cqi, 14px);
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .gift-chrome .btn-track-next {
+      right: clamp(6px, 2cqi, 14px);
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .gift-chrome .btn-track {
+      width: 42px;
+      height: 46px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.32);
+      border: 1px solid var(--ticket-line);
+      opacity: 0.88;
+    }
+
+    .gift-chrome .btn-track:hover {
+      background: rgba(255, 255, 255, 0.1);
+      opacity: 1;
+    }
+
+    /* 覆盖 .btn-track 的 display:flex，否则 HTML hidden 无法真正隐藏箭头 */
+    .gift-chrome .btn-track[hidden] {
+      display: none !important;
+      pointer-events: none !important;
+      visibility: hidden;
+    }
+
+    .card-stack {
+      position: absolute;
+      inset: 0;
+    }
+
+    .puzzle-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      display: none;
+      flex-direction: column;
+      padding: 6px;
+      background: rgba(0, 0, 0, 0.35);
+      border-radius: 8px;
+      transition: opacity 0.45s ease;
+    }
+
+    .puzzle-layer.is-on {
+      display: flex;
+    }
+
+    .puzzle-layer.puzzle-solved {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .puzzle-grid {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 5px;
+      touch-action: none;
+    }
+
+    .puzzle-slot {
+      position: relative;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--ticket-line);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      background: rgba(0, 0, 0, 0.22);
+      touch-action: none;
+    }
+
+    .puzzle-slot--selected {
+      outline: 2px solid rgba(232, 228, 220, 0.55);
+      outline-offset: 1px;
+      z-index: 2;
+    }
+
+    .puzzle-tile-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      pointer-events: none;
+    }
+
+    #coverCanvas {
+      z-index: 0;
+    }
+
+    .card-shield {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background: linear-gradient(148deg, #3a3a3a 0%, #2c2c2c 45%, #333 100%);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.12s ease, visibility 0.12s ease;
+    }
+    .card-shield.is-on {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+
+    #coatCanvas {
+      z-index: 2;
+      transition: opacity 0.4s ease;
+    }
+    #coatCanvas.reveal-fade {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .text-col {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1 1 auto;
+      min-width: 0;
+      min-height: 0;
+      width: 100%;
+      padding: 6px 0 0;
+      justify-content: flex-start;
+      text-align: left;
+      align-items: stretch;
+      position: relative;
+      z-index: 2;
+      border-top: 1px solid var(--ticket-line);
+      /* 容器占满 flex 区但不接指针；仅文案子块可点，避免盖住下方 canvas */
+      pointer-events: none;
+    }
+
+    .text-col .hint,
+    .text-col .hint-sub,
+    .text-col .text-col-bottom {
+      pointer-events: auto;
+    }
+
+    .hint {
+      font-size: clamp(13px, 2.1vw, 15px);
+      line-height: 1.16;
+      color: var(--ticket-fg);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      opacity: 1;
+      transition: opacity 0.3s ease;
+      white-space: pre-line;
+    }
+    .hint.f-out { opacity: 0; }
+    .hint.f-in { opacity: 1; }
+
+    .hint .blessing-meta {
+      display: block;
+      font-size: calc(1em - 8px + 6px);
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      opacity: 0.5;
+    }
+
+    .hint .blessing-core {
+      display: block;
+      opacity: 1;
+    }
+
+    .hint-sub {
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--ticket-muted);
+      line-height: 1.45;
+      max-width: none;
+      letter-spacing: 0.02em;
+    }
+
+    .hint-sub:empty {
+      display: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .text-col-bottom {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-end;
+      justify-content: flex-start;
+      gap: 12px;
+      width: 100%;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      transition-delay: 0s;
+    }
+
+    .text-col-bottom.show {
+      margin-top: auto;
+      opacity: 1;
+      /* 相对原位置整体上移 4px，缩小封面与歌名区之间的空隙 */
+      transform: translateY(-4px);
+      transition-delay: 0.15s;
+    }
+
+    .text-col-bottom .track {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .track {
+      font-size: 12px;
+      color: var(--ticket-muted);
+    }
+    .track .name {
+      color: var(--ticket-fg);
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .track .artist {
+      margin-top: 2px;
+      font-weight: 400;
+      color: var(--ticket-muted);
+      font-size: 11px;
+    }
+
+    .gift-foot {
+      position: relative;
+      z-index: 14;
+      flex-shrink: 0;
+      margin-top: auto;
+      padding-top: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+      /* 避免窄屏时页脚区域盖住中部 canvas 仍拦截触摸 */
+      pointer-events: none;
+    }
+
+    .gift-foot > * {
+      pointer-events: auto;
+    }
+
+    .gift-foot-meta {
+      border-top: 1px solid var(--ticket-line-strong);
+      padding-top: 10px;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .gift-foot-meta-inner {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .gift-foot-meta-col--main {
+      min-width: 0;
+    }
+
+    .gift-foot-date {
+      flex-shrink: 0;
+      align-self: flex-end;
+      margin: 0;
+      padding: 0;
+      font-size: 8px;
+      font-weight: 400;
+      letter-spacing: 0.12em;
+      text-transform: none;
+      line-height: 1.15;
+      opacity: 0.42;
+      color: var(--ticket-muted);
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .gift-foot-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 4px;
+      color: var(--ticket-muted);
+    }
+
+    .gift-foot-line--muted {
+      opacity: 0.45;
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      margin-bottom: 0;
+    }
+
+    .particles {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 0;
+    }
+    .particle {
+      position: absolute;
+      border-radius: 999px;
+      opacity: 0.22;
+      filter: blur(0.2px);
+      animation: floaty linear infinite;
+    }
+    @keyframes floaty {
+      0% { transform: translate3d(0, 0, 0) scale(1); }
+      50% { transform: translate3d(var(--dx), var(--dy), 0) scale(1.08); }
+      100% { transform: translate3d(0, 0, 0) scale(1); }
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      #coatCanvas { cursor: none; }
+    }
+
+    html.card-dark,
+    html.card-dark body {
+      background-color: #0a0a0a;
+      color: var(--ticket-fg);
+    }
+
+    html.card-dark .particle {
+      opacity: 0.05;
+    }
+
+    html.card-dark .gift-card {
+      background: #242424;
+      box-shadow: 0 28px 72px rgba(0, 0, 0, 0.85);
+    }
+
+    html:has(.gift-root.is-revealed) body {
+      background-color: #121212;
+      color: var(--ticket-fg);
+    }
+
+    html:has(.gift-root.is-revealed) .particle {
+      opacity: 0.06;
+    }
+  </style>
+</head>
+<body>
+  <div class="particles" id="particles" aria-hidden="true"></div>
+
+  <div
+    class="envelope-overlay"
+    id="envelopeOverlay"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="envTitle"
+  >
+    <div class="env-fold-scene" id="envFoldScene">
+      <div class="env-fold-card" id="envFoldCard">
+        <div class="env-prelude-visual" aria-hidden="true">
+          <img
+            class="env-prelude-mesh"
+            src="assets/env-prelude-mesh.webp"
+            alt=""
+            decoding="async"
+          />
+          <div class="env-visual-overlay-text">
+            <span>M U S I C</span>
+            <span>C A R D</span>
+            <span class="env-visual-tag">A U D I O &nbsp; F I E L D</span>
+          </div>
+        </div>
+        <div class="env-prelude-panel">
+          <div class="env-fold-base" aria-hidden="true"></div>
+          <div class="env-fold-flap" id="envFoldFlap">
+            <div class="env-fold-flap-inner">
+              <p class="env-kicker" id="envKicker">Crafting</p>
+              <h1 class="env-title" id="envTitle">你有一封音乐贺卡</h1>
+              <p class="env-lede" id="envLede">点击下方按钮，开始阅读</p>
+              <button type="button" class="envelope-seal" id="envelopeOpen" aria-describedby="envFoot" aria-label="展开阅读">
+                <span class="envelope-seal__ring" aria-hidden="true"></span>
+                <span class="envelope-seal__glyph" aria-hidden="true">
+                  <svg class="envelope-seal__ic" viewBox="0 0 24 28" fill="none" xmlns="http://www.w3.org/2000/svg" focusable="false">
+                    <path d="M6 17l6-5 6 5" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M6 10l6-5 6 5" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </span>
+              </button>
+              <p class="env-foot" id="envFoot">点击开始</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gift-root" id="giftRoot" aria-hidden="true">
+    <div class="gift-card">
+      <div class="gift-card-fx" aria-hidden="true">
+        <div class="gift-card-fx-curves"></div>
+        <div class="gift-card-fx-vignette"></div>
+      </div>
+      <div class="gift-card-shell" id="giftCardShell">
+        <div class="gift-inner">
+        <div class="gift-inner-fx" id="giftInnerFx" aria-hidden="true">
+          <div class="gift-inner-fx-sweep"></div>
+          <div class="gift-inner-fx-album" id="giftInnerFxAlbum"></div>
+        </div>
+        <div class="gift-inner-particles" id="giftInnerParticles" aria-hidden="true"></div>
+        <div class="gift-play-bleed" aria-hidden="false">
+          <div class="card-wrap" id="cardWrap">
+            <div class="card-stack" id="cardStack">
+              <canvas id="coverCanvas"></canvas>
+              <div class="card-shield" id="cardShield" aria-hidden="true"></div>
+              <canvas id="coatCanvas" tabindex="-1"></canvas>
+            </div>
+            <div class="puzzle-layer" id="puzzleLayer" aria-hidden="true">
+              <div class="puzzle-grid" id="puzzleGrid"></div>
+            </div>
+          </div>
+        </div>
+        <div class="gift-chrome" aria-hidden="false">
+          <button type="button" class="btn-track btn-track-prev" id="btnTrackPrev" aria-label="上一首" title="上一首" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+          <button type="button" class="btn-mute" id="btnMute" aria-label="静音" aria-pressed="false" title="静音">
+            <svg class="ic-vol-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M11 5L6 9H2v6h4l5 4V5z" />
+              <path d="M15.54 8.46a5 5 0 010 7.07" />
+              <path d="M19.07 4.93a10 10 0 010 14.14" />
+            </svg>
+            <svg class="ic-vol-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M11 5L6 9H2v6h4l5 4V5z" />
+              <line x1="23" y1="9" x2="17" y2="15" />
+              <line x1="17" y1="9" x2="23" y2="15" />
+            </svg>
+          </button>
+          <button type="button" class="btn-track btn-track-next" id="btnTrackNext" aria-label="换一首" title="换一首" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </button>
+        </div>
+
+        <main class="layout">
+          <div class="text-col">
+            <p class="hint" id="hintText">按下方说明操作</p>
+            <p class="hint-sub" id="hintSub"></p>
+            <div class="text-col-bottom" id="textColBottom">
+              <div class="track" id="trackInfo" aria-live="polite"></div>
+            </div>
+          </div>
+        </main>
+
+        <footer class="gift-foot">
+          <div class="gift-foot-meta">
+            <div class="gift-foot-meta-inner">
+              <div class="gift-foot-meta-col gift-foot-meta-col--main">
+                <div class="gift-foot-line">
+                  <span>音乐贺卡</span>
+                </div>
+                <div class="gift-foot-line gift-foot-line--muted">
+                  <span>From JoJo</span>
+                </div>
+              </div>
+              <time class="gift-foot-date" id="giftFootDate" datetime=""></time>
+            </div>
+          </div>
+        </footer>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <audio id="bgm" loop preload="auto"></audio>
+
+  <script>
+(function () {
+  'use strict';
+
+  const KEYWORDS = [
+    'Billboard Hot 100',
+    'top pop hits USA',
+    'UK indie alternative',
+    'R&B soul charts',
+    'country radio hits',
+    'Latin pop urban',
+    'K-pop hits',
+    'hip hop rap hits',
+    'EDM festival',
+    'rock anthems classic',
+    'Mandopop hits',
+    'Cantopop classics',
+    'French pop variété',
+    'Japanese city pop',
+    'soundtrack movie hits'
+  ];
+  const ITUNES = 'https://itunes.apple.com/search';
+
+  const coverCanvas = document.getElementById('coverCanvas');
+  const coatCanvas = document.getElementById('coatCanvas');
+  const coverCtx = coverCanvas.getContext('2d', { willReadFrequently: true });
+  const coatCtx = coatCanvas.getContext('2d');
+
+  const hintEl = document.getElementById('hintText');
+  const trackEl = document.getElementById('trackInfo');
+  const textColBottom = document.getElementById('textColBottom');
+  const bgm = document.getElementById('bgm');
+  const btnTrackPrev = document.getElementById('btnTrackPrev');
+  const btnTrackNext = document.getElementById('btnTrackNext');
+  const envFoldFlap = document.getElementById('envFoldFlap');
+  const cardWrap = document.getElementById('cardWrap');
+  const puzzleLayer = document.getElementById('puzzleLayer');
+  const puzzleGrid = document.getElementById('puzzleGrid');
+  const cardShield = document.getElementById('cardShield');
+  const hintSubEl = document.getElementById('hintSub');
+  const btnMute = document.getElementById('btnMute');
+  const giftRoot = document.getElementById('giftRoot');
+  const envelopeOverlay = document.getElementById('envelopeOverlay');
+  const envelopeOpen = document.getElementById('envelopeOpen');
+  const envKicker = document.getElementById('envKicker');
+  const envTitle = document.getElementById('envTitle');
+  const envLede = document.getElementById('envLede');
+  const envFoot = document.getElementById('envFoot');
+
+  const DEFAULT_ENV_THEME = {
+    palette: {
+      bg: '#121212',
+      fg: '#e8e4dc',
+      muted: 'rgba(232, 228, 220, 0.58)',
+      line: 'rgba(232, 228, 220, 0.12)',
+      accent: '#e8e4dc'
+    },
+    copy: {
+      kicker: '好友赠礼',
+      title: '你有一封音乐贺卡',
+      lede: '点击下方按钮，开始阅读',
+      foot: '点击开始',
+      sealGlyph: ''
+    },
+    motion: {
+      openMs: 2500,
+      overlayFadeMs: 720
+    },
+    cardAfterOpen: 'match-prelude'
+  };
+
+  const BLESSINGS = [
+    '祝你成功上岸，前程似锦。',
+    '天天开心，万事顺心。',
+    '快乐每一天，笑容常在。',
+    '所求皆如愿，所行皆坦途。',
+    '平安喜乐，得偿所愿。',
+    '好运常伴，温暖相随。',
+    '万事胜意，未来可期。',
+    '健康平安，幸福绵长。',
+    '心想事成，笑口常开。',
+    '顺风顺水，步步高升。',
+    '愿你眼里有光，心中有爱。',
+    '心无挂碍，自在欢喜。',
+    '诸事顺遂，喜乐安康。',
+    '岁月温柔，人间值得。',
+    '元气满满，所向披靡。',
+    '少忧多喜，越来越好。',
+    '温暖常伴，好运连连。',
+    '愿你被世界温柔以待。',
+    '前程似锦，不负韶华。',
+    '开局顺利，一路繁花。',
+    '温柔且坚定，前路皆光明。',
+    '笑对生活，自有光芒。',
+    '踏实努力，自有回报。',
+    '愿你今日愉快，明日更好。'
+  ];
+
+  let lastBlessingIndex = -1;
+
+  function pickRandomBlessing() {
+    const n = BLESSINGS.length;
+    if (n === 0) return '祝你天天开心。';
+    if (n === 1) return BLESSINGS[0];
+    let i;
+    let guard = 0;
+    do {
+      i = Math.floor(Math.random() * n);
+      guard++;
+    } while (i === lastBlessingIndex && guard < 24);
+    lastBlessingIndex = i;
+    return BLESSINGS[i];
+  }
+
+  const BLESSING_TO_LINE = 'To：友友';
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function formatBlessingMessageHTML(core) {
+    return (
+      '<span class="blessing-meta">' + escapeHtml(BLESSING_TO_LINE) + '</span><br><br>' +
+      '<span class="blessing-core">' + escapeHtml(core) + '</span>'
+    );
+  }
+
+  const HINT_SUB_COAT_BLESSING = '轻轻触摸封面，刮开涂层查看祝福语';
+
+  const mHoverFine = window.matchMedia('(hover: hover) and (pointer: fine)');
+  function useHoverErase() {
+    return mHoverFine.matches;
+  }
+
+  const BRUSH = 22;
+  const MIN_R = 5;
+  const CHILD_SCALE = 0.98;
+  const CELL = 32;
+  const MAX_SPLITS_PER_MOVE = 180;
+
+  const FOG_BRUSH = 28;
+  const FOG_BLUR = 18;
+  const REVEAL_PROGRESS = 0.6;
+
+  const POLAROID_MAX = 100;
+  /** 纯点击约 10 次满显影（与 POLAROID_MAX 对齐） */
+  const POLAROID_TAP = 10;
+  const POLAROID_DRAG = 0.42;
+  const POLAROID_SHAKE = 6.2;
+
+  const EFFECTS = ['scratch', 'pixel', 'fog', 'puzzle', 'polaroid'];
+  function pickRandomEffect() {
+    return EFFECTS[Math.floor(Math.random() * EFFECTS.length)];
+  }
+
+  let dpr = 1;
+  let cardCss = 380;
+  let effect = pickRandomEffect();
+
+  let results = [];
+  let resultIndex = -1;
+  let keywordIndex = Math.floor(Math.random() * KEYWORDS.length);
+
+  let pointerDown = false;
+  let lastX = 0, lastY = 0;
+  let hasStartedAudio = false;
+  let wasPlaying = false;
+  let audioUnlocked = false;
+  let envelopeDone = false;
+  let latestEnvelopeTheme = DEFAULT_ENV_THEME;
+
+  let coverPixels = null;
+  let coverPixelsW = 0;
+  let coverPixelsH = 0;
+
+  let revealed = false;
+  let locked = false;
+
+  let circles = [];
+  let nextCircleId = 1;
+  const grid = new Map();
+
+  let fogTexture = null;
+  let fogCheckFrame = 0;
+
+  let rafId = 0;
+  let pixelAreaDenom = 0;
+  let pixelSampleTick = 0;
+
+  let puzzleBoard = null;
+  let puzzleSlots = [];
+  let puzzleDrag = null;
+
+  let polaroidEnergy = 0;
+  let polaroidVeil = null;
+  let polaroidVeilW = 0;
+  let polaroidVeilH = 0;
+  let polaroidMotionAttached = false;
+  let polaroidMotionPending = false;
+  let polaroidLastShakeAt = 0;
+
+  let coatGestureKind = null;
+  let coatGestureSX = 0;
+  let coatGestureSY = 0;
+  let coatDownCanvasP = null;
+
+  let trackSwitchBusy = false;
+
+  function syncTrackNavVisibility() {
+    if (!btnTrackPrev || !btnTrackNext) return;
+    if (!revealed) {
+      btnTrackPrev.hidden = true;
+      btnTrackPrev.setAttribute('aria-hidden', 'true');
+      btnTrackNext.hidden = true;
+      btnTrackNext.setAttribute('aria-hidden', 'true');
+      return;
+    }
+    const n = results.length;
+    const showPrev = n > 0 && resultIndex > 0;
+    btnTrackPrev.hidden = !showPrev;
+    btnTrackPrev.setAttribute('aria-hidden', showPrev ? 'false' : 'true');
+    btnTrackNext.hidden = false;
+    btnTrackNext.setAttribute('aria-hidden', 'false');
+  }
+
+  async function goPrevTrack() {
+    const n = results.length;
+    if (trackSwitchBusy || n === 0 || resultIndex < 0) return;
+    trackSwitchBusy = true;
+    raiseShield();
+    try {
+      resultIndex = (resultIndex - 1 + n) % n;
+      const r = results[resultIndex];
+      await applyTrack(r);
+      bgm.src = r.previewUrl;
+      try {
+        if (wasPlaying || hasStartedAudio) {
+          await bgm.play();
+          wasPlaying = true;
+        }
+      } catch (_) {}
+      resetUIForNewTrack();
+      syncTrackNavVisibility();
+    } catch (err) {
+      console.error(err);
+      alert(err.message || String(err));
+    } finally {
+      trackSwitchBusy = false;
+      lowerShield();
+    }
+  }
+
+  async function goNextTrackFromArrow() {
+    if (trackSwitchBusy) return;
+    trackSwitchBusy = true;
+    try {
+      unlockAudioSilently();
+      wasPlaying = !bgm.paused;
+      await advanceTrack({ newStyle: true });
+    } catch (err) {
+      console.error(err);
+      alert(err.message || String(err));
+    } finally {
+      trackSwitchBusy = false;
+    }
+  }
+
+  function applyEnvelopeTheme(theme) {
+    const t = Object.assign({}, DEFAULT_ENV_THEME, theme && typeof theme === 'object' ? theme : {});
+    const p = Object.assign({}, DEFAULT_ENV_THEME.palette, t.palette || {});
+    const c = Object.assign({}, DEFAULT_ENV_THEME.copy, t.copy || {});
+    document.documentElement.style.setProperty('--env-prelude-bg', p.bg);
+    envelopeOverlay.style.setProperty('--env-bg', p.bg);
+    envelopeOverlay.style.setProperty('--env-fg', p.fg);
+    envelopeOverlay.style.setProperty('--env-muted', p.muted);
+    envelopeOverlay.style.setProperty('--env-line', p.line);
+    envelopeOverlay.style.setProperty('--env-accent', p.accent);
+    if (envKicker) envKicker.textContent = c.kicker;
+    if (envTitle) envTitle.textContent = c.title;
+    if (envLede) envLede.textContent = c.lede;
+    if (envFoot) envFoot.textContent = c.foot;
+    const glyph = envelopeOpen && envelopeOpen.querySelector('.envelope-seal__glyph');
+    if (glyph && !glyph.querySelector('svg') && c.sealGlyph != null && c.sealGlyph !== '') {
+      glyph.textContent = c.sealGlyph;
+    }
+    latestEnvelopeTheme = {
+      palette: p,
+      copy: c,
+      motion: Object.assign({}, DEFAULT_ENV_THEME.motion, t.motion || {}),
+      cardAfterOpen: t.cardAfterOpen || DEFAULT_ENV_THEME.cardAfterOpen
+    };
+  }
+
+  function parseThemeBgRgb(bg) {
+    if (!bg || typeof bg !== 'string') return { r: 10, g: 10, b: 10 };
+    const t = bg.trim();
+    if (/^rgb/i.test(t)) {
+      const m = t.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i);
+      if (m) {
+        return {
+          r: Math.min(255, Math.round(Number(m[1]))),
+          g: Math.min(255, Math.round(Number(m[2]))),
+          b: Math.min(255, Math.round(Number(m[3])))
+        };
+      }
+    }
+    const m3 = /^#([a-f\d])([a-f\d])([a-f\d])$/i.exec(t);
+    if (m3) {
+      return {
+        r: parseInt(m3[1] + m3[1], 16),
+        g: parseInt(m3[2] + m3[2], 16),
+        b: parseInt(m3[3] + m3[3], 16)
+      };
+    }
+    const m6 = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(t);
+    if (m6) {
+      return {
+        r: parseInt(m6[1], 16),
+        g: parseInt(m6[2], 16),
+        b: parseInt(m6[3], 16)
+      };
+    }
+    return { r: 10, g: 10, b: 10 };
+  }
+
+  function relativeLuminance(rgb) {
+    function lin(v) {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    }
+    const r = lin(rgb.r);
+    const g = lin(rgb.g);
+    const b = lin(rgb.b);
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+
+  function preludeBackgroundIsDark() {
+    const bg = (latestEnvelopeTheme.palette && latestEnvelopeTheme.palette.bg) || '#0a0a0a';
+    return relativeLuminance(parseThemeBgRgb(bg)) < 0.45;
+  }
+
+  function shouldOpenCardInDarkMode() {
+    const mode = latestEnvelopeTheme.cardAfterOpen || 'match-prelude';
+    if (mode === 'dark') return true;
+    if (mode === 'light') return false;
+    if (mode === 'match-system') {
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return preludeBackgroundIsDark();
+  }
+
+  async function loadEnvelopeTheme() {
+    try {
+      const res = await fetch('envelope-theme.json', { cache: 'no-store' });
+      if (res.ok) {
+        const j = await res.json();
+        if (j && typeof j === 'object') return j;
+      }
+    } catch (_) {}
+    return DEFAULT_ENV_THEME;
+  }
+
+  function raiseShield() {
+    cardShield.classList.add('is-on');
+  }
+
+  function lowerShield() {
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        cardShield.classList.remove('is-on');
+      });
+    });
+  }
+
+  function refreshHints() {
+    if (revealed) return;
+    if (effect === 'puzzle') {
+      hintEl.textContent = '专辑拼图';
+      hintSubEl.textContent = '按住拖拽，调整方格，解锁祝福语';
+      return;
+    }
+    if (effect === 'polaroid') {
+      hintEl.textContent = '拍立得显影';
+      hintSubEl.textContent = '摇晃手机或快速点击画面，让封面慢慢显现';
+      return;
+    }
+    if (effect === 'scratch') {
+      hintEl.textContent = '刮开涂层';
+      hintSubEl.textContent = HINT_SUB_COAT_BLESSING;
+      return;
+    }
+    if (effect === 'pixel') {
+      hintEl.textContent = '轻刮涂层';
+      hintSubEl.textContent = HINT_SUB_COAT_BLESSING;
+      return;
+    }
+    hintEl.textContent = '拂去水雾';
+    hintSubEl.textContent = HINT_SUB_COAT_BLESSING;
+  }
+
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function cellKey(ix, iy) { return ix + ',' + iy; }
+
+  function cellsForCircle(x, y, r) {
+    const keys = [];
+    const minIx = Math.floor((x - r) / CELL);
+    const maxIx = Math.floor((x + r) / CELL);
+    const minIy = Math.floor((y - r) / CELL);
+    const maxIy = Math.floor((y + r) / CELL);
+    for (let ix = minIx; ix <= maxIx; ix++) {
+      for (let iy = minIy; iy <= maxIy; iy++) {
+        keys.push(cellKey(ix, iy));
+      }
+    }
+    return keys;
+  }
+
+  function addCircleToGrid(c) {
+    c._cells = cellsForCircle(c.x, c.y, c.r);
+    for (const k of c._cells) {
+      if (!grid.has(k)) grid.set(k, new Set());
+      grid.get(k).add(c.id);
+    }
+  }
+
+  function removeCircleFromGrid(c) {
+    if (!c._cells) return;
+    for (const k of c._cells) {
+      const s = grid.get(k);
+      if (s) {
+        s.delete(c.id);
+        if (s.size === 0) grid.delete(k);
+      }
+    }
+    c._cells = null;
+  }
+
+  function refreshCoverPixels() {
+    const w = coverCanvas.width;
+    const h = coverCanvas.height;
+    if (w < 1 || h < 1) {
+      coverPixels = null;
+      return;
+    }
+    coverPixelsW = w;
+    coverPixelsH = h;
+    try {
+      coverPixels = coverCtx.getImageData(0, 0, w, h).data;
+    } catch (_) {
+      coverPixels = null;
+    }
+  }
+
+  function rgbAt(px, py) {
+    const w = coverPixelsW;
+    const h = coverPixelsH || coverCanvas.height;
+    const ix = Math.max(0, Math.min(w - 1, Math.floor(px)));
+    const iy = Math.max(0, Math.min(h - 1, Math.floor(py)));
+    if (coverPixels && (iy * w + ix) * 4 + 2 < coverPixels.length) {
+      const i = (iy * w + ix) * 4;
+      return `rgb(${coverPixels[i]},${coverPixels[i + 1]},${coverPixels[i + 2]})`;
+    }
+    const d = coverCtx.getImageData(ix, iy, 1, 1).data;
+    return `rgb(${d[0]},${d[1]},${d[2]})`;
+  }
+
+  function resizeCanvases() {
+    const rect = cardWrap.getBoundingClientRect();
+    cardCss = Math.min(rect.width, rect.height);
+    dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    const w = Math.max(1, Math.round(cardCss * dpr));
+    const h = w;
+    coverCanvas.width = w;
+    coverCanvas.height = h;
+    coatCanvas.width = w;
+    coatCanvas.height = h;
+  }
+
+  function rootCircleRadius() {
+    const w = coverCanvas.width;
+    const h = coverCanvas.height;
+    return Math.sqrt(w * w + h * h) / 2 * 1.02;
+  }
+
+  function initialCircleArea() {
+    const R = rootCircleRadius();
+    return Math.PI * R * R;
+  }
+
+  function remainingCircleArea() {
+    let s = 0;
+    for (const c of circles) s += Math.PI * c.r * c.r;
+    return s;
+  }
+
+  function circleProgress() {
+    const a0 = pixelAreaDenom || initialCircleArea();
+    if (a0 <= 0) return 1;
+    return 1 - remainingCircleArea() / a0;
+  }
+
+  function samplePixelCoatClearRatio() {
+    const w = coatCanvas.width;
+    const h = coatCanvas.height;
+    if (w < 2 || h < 2) return 1;
+    const step = Math.max(2, Math.round(Math.min(w, h) / 56));
+    let clear = 0;
+    let total = 0;
+    const data = coatCtx.getImageData(0, 0, w, h).data;
+    const alphaThreshold = 20;
+    for (let y = 0; y < h; y += step) {
+      for (let x = 0; x < w; x += step) {
+        total++;
+        if (data[(Math.floor(y) * w + Math.floor(x)) * 4 + 3] <= alphaThreshold) {
+          clear++;
+        }
+      }
+    }
+    return total ? clear / total : 1;
+  }
+
+  function setupParticles() {
+    const root = document.getElementById('particles');
+    root.innerHTML = '';
+    const n = 18;
+    for (let i = 0; i < n; i++) {
+      const el = document.createElement('span');
+      el.className = 'particle';
+      const size = 3 + Math.random() * 5;
+      el.style.width = size + 'px';
+      el.style.height = size + 'px';
+      el.style.left = Math.random() * 100 + '%';
+      el.style.top = Math.random() * 100 + '%';
+      el.style.background = Math.random() > 0.5
+        ? 'linear-gradient(135deg, rgba(37,99,235,0.2), rgba(120,160,200,0.22))'
+        : 'linear-gradient(135deg, rgba(255,255,255,0.7), rgba(0,0,0,0.04))';
+      const dur = 14 + Math.random() * 18;
+      el.style.animationDuration = dur + 's';
+      el.style.animationDelay = -Math.random() * dur + 's';
+      const dx = (Math.random() - 0.5) * 28;
+      const dy = (Math.random() - 0.5) * 36;
+      el.style.setProperty('--dx', dx + 'px');
+      el.style.setProperty('--dy', dy + 'px');
+      root.appendChild(el);
+    }
+  }
+
+  function sampleCoverPaletteForGiftInner() {
+    const fallback = [
+      { r: 188, g: 186, b: 178 },
+      { r: 110, g: 108, b: 104 },
+      { r: 52, g: 52, b: 50 },
+    ];
+    const w = coverCanvas.width;
+    const h = coverCanvas.height;
+    if (w < 4 || h < 4) return fallback;
+    const step = Math.max(3, Math.floor(Math.min(w, h) / 26));
+    const buckets = new Map();
+    const data = coverCtx.getImageData(0, 0, w, h).data;
+    for (let y = 0; y < h; y += step) {
+      for (let x = 0; x < w; x += step) {
+        const ix = Math.min(Math.floor(x), w - 1);
+        const iy = Math.min(Math.floor(y), h - 1);
+        const i = (iy * w + ix) * 4;
+        if (data[i + 3] < 28) continue;
+        const rq = (data[i] >> 4) << 4;
+        const gq = (data[i + 1] >> 4) << 4;
+        const bq = (data[i + 2] >> 4) << 4;
+        const key = (rq << 16) | (gq << 8) | bq;
+        let o = buckets.get(key);
+        if (!o) {
+          o = { r: 0, g: 0, b: 0, count: 0 };
+          buckets.set(key, o);
+        }
+        o.r += data[i];
+        o.g += data[i + 1];
+        o.b += data[i + 2];
+        o.count++;
+      }
+    }
+    if (!buckets.size) return fallback;
+    const ranked = [];
+    buckets.forEach(function (v) {
+      ranked.push({
+        r: Math.round(v.r / v.count),
+        g: Math.round(v.g / v.count),
+        b: Math.round(v.b / v.count),
+        count: v.count,
+      });
+    });
+    ranked.sort(function (a, b) {
+      return b.count - a.count;
+    });
+    const top = ranked.slice(0, 5).map(function (o) {
+      return { r: o.r, g: o.g, b: o.b };
+    });
+    return top.length ? top : fallback;
+  }
+
+  function albumRgbTriplet(c) {
+    const r = Math.max(0, Math.min(255, Math.round(c.r)));
+    const g = Math.max(0, Math.min(255, Math.round(c.g)));
+    const b = Math.max(0, Math.min(255, Math.round(c.b)));
+    return r + ' ' + g + ' ' + b;
+  }
+
+  function applyCoverPaletteToGiftInnerFx(palette) {
+    const wrap = document.getElementById('giftInnerFx');
+    if (!wrap) return;
+    const p = palette && palette.length ? palette : [{ r: 120, g: 130, b: 145 }];
+    const c0 = p[0];
+    const c1 = p[1] || c0;
+    const c2 = p[2] || c0;
+    const c3 = p[3] || p[Math.min(4, p.length - 1)] || c1;
+    wrap.style.setProperty('--alb-0', albumRgbTriplet(c0));
+    wrap.style.setProperty('--alb-1', albumRgbTriplet(c1));
+    wrap.style.setProperty('--alb-2', albumRgbTriplet(c2));
+    wrap.style.setProperty('--alb-3', albumRgbTriplet(c3));
+  }
+
+  function rebuildGiftInnerAlbumBlobs(palette) {
+    const albumRoot = document.getElementById('giftInnerFxAlbum');
+    if (!albumRoot) return;
+    albumRoot.innerHTML = '';
+    const p = palette && palette.length ? palette : [{ r: 140, g: 138, b: 132 }];
+    const nb = 11;
+    for (let i = 0; i < nb; i++) {
+      const c = p[i % p.length];
+      const el = document.createElement('span');
+      el.className = 'gift-inner-album-blob';
+      const size = 72 + Math.random() * 140;
+      el.style.width = size + 'px';
+      el.style.height = size + 'px';
+      el.style.left = Math.random() * 108 - 4 + '%';
+      el.style.top = Math.random() * 108 - 4 + '%';
+      const aMid = 0.32 + Math.random() * 0.22;
+      const mid = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + aMid.toFixed(3) + ')';
+      const edge = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0)';
+      el.style.background =
+        'radial-gradient(circle closest-side, ' + mid + ' 0%, ' + edge + ' 70%)';
+      el.style.filter = 'blur(' + (18 + Math.random() * 26) + 'px)';
+      const dur = 16 + Math.random() * 18;
+      el.style.animationDuration = dur + 's';
+      el.style.animationDelay = '-' + (Math.random() * dur) + 's';
+      const dx0 = (Math.random() - 0.5) * 22;
+      const dy0 = (Math.random() - 0.5) * 26;
+      const dx1 = (Math.random() - 0.5) * 48;
+      const dy1 = (Math.random() - 0.5) * 52;
+      el.style.setProperty('--abx0', dx0 + 'px');
+      el.style.setProperty('--aby0', dy0 + 'px');
+      el.style.setProperty('--abx1', dx1 + 'px');
+      el.style.setProperty('--aby1', dy1 + 'px');
+      el.style.setProperty('--ao0', String(0.35 + Math.random() * 0.35));
+      el.style.setProperty('--ao1', String(0.55 + Math.random() * 0.35));
+      albumRoot.appendChild(el);
+    }
+  }
+
+  function rebuildGiftInnerParticles() {
+    const root = document.getElementById('giftInnerParticles');
+    if (!root) return;
+    root.innerHTML = '';
+    let palette;
+    try {
+      palette = sampleCoverPaletteForGiftInner();
+    } catch (_) {
+      palette = [
+        { r: 188, g: 186, b: 178 },
+        { r: 96, g: 94, b: 90 },
+      ];
+    }
+    applyCoverPaletteToGiftInnerFx(palette);
+    rebuildGiftInnerAlbumBlobs(palette);
+    const n = 13;
+    for (let i = 0; i < n; i++) {
+      const c = palette[i % palette.length];
+      const el = document.createElement('span');
+      el.className = 'gift-inner-particle';
+      const size = 64 + Math.random() * 110;
+      el.style.width = size + 'px';
+      el.style.height = size + 'px';
+      el.style.left = Math.random() * 100 - 8 + '%';
+      el.style.top = Math.random() * 100 - 8 + '%';
+      const mid = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.42)';
+      const edge = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0)';
+      el.style.background =
+        'radial-gradient(circle closest-side, ' + mid + ' 0%, ' + edge + ' 72%)';
+      el.style.filter = 'blur(' + (14 + Math.random() * 20) + 'px)';
+      el.style.opacity = String(0.05 + Math.random() * 0.06);
+      const dur = 24 + Math.random() * 28;
+      el.style.animationDuration = dur + 's';
+      el.style.animationDelay = '-' + (Math.random() * dur) + 's';
+      const dx0 = (Math.random() - 0.5) * 16;
+      const dy0 = (Math.random() - 0.5) * 20;
+      const dx1 = (Math.random() - 0.5) * 36;
+      const dy1 = (Math.random() - 0.5) * 42;
+      el.style.setProperty('--dx0', dx0 + 'px');
+      el.style.setProperty('--dy0', dy0 + 'px');
+      el.style.setProperty('--dx1', dx1 + 'px');
+      el.style.setProperty('--dy1', dy1 + 'px');
+      root.appendChild(el);
+    }
+  }
+
+  function upscaleArtwork(url) {
+    if (!url) return url;
+    return url.replace(/100x100bb\.jpg/i, '600x600bb.jpg');
+  }
+
+  async function fetchItunes(term) {
+    const q = encodeURIComponent(term.trim());
+    const url = `${ITUNES}?term=${q}&media=music&entity=song&limit=50`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('iTunes HTTP ' + res.status);
+    const data = await res.json();
+    return data.results || [];
+  }
+
+  function pickNextKeyword() {
+    if (KEYWORDS.length <= 1) return;
+    let n;
+    do {
+      n = Math.floor(Math.random() * KEYWORDS.length);
+    } while (n === keywordIndex);
+    keywordIndex = n;
+  }
+
+  function artistKey(r) {
+    return String(r.artistId != null ? r.artistId : (r.artistName || '').trim() || 'unknown');
+  }
+
+  function diversifyByArtist(items, minTracks) {
+    if (!items.length) return [];
+    const min = Math.min(minTracks, items.length);
+    shuffle(items);
+    for (let maxPer = 1; maxPer <= 3; maxPer++) {
+      const counts = new Map();
+      const out = [];
+      for (let i = 0; i < items.length; i++) {
+        const r = items[i];
+        const k = artistKey(r);
+        const c = counts.get(k) || 0;
+        if (c >= maxPer) continue;
+        counts.set(k, c + 1);
+        out.push(r);
+        if (out.length >= 48) break;
+      }
+      if (out.length >= min || maxPer >= 3) {
+        shuffle(out);
+        return out.length ? out : items.slice(0, 12);
+      }
+    }
+    return items.slice(0, 12);
+  }
+
+  async function loadTrackList() {
+    const term = KEYWORDS[keywordIndex];
+    const raw = await fetchItunes(term);
+    const filtered = raw.filter(function (r) { return r.previewUrl && r.artworkUrl100; });
+    results = diversifyByArtist(filtered, 6);
+    shuffle(results);
+    resultIndex = -1;
+    if (results.length === 0) {
+      pickNextKeyword();
+      throw new Error('暂无可用曲目，请刷新重试。');
+    }
+  }
+
+  function applyTrack(r) {
+    const art = upscaleArtwork(r.artworkUrl100);
+    return new Promise(function (resolve, reject) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = function () {
+        resizeCanvases();
+        coverCtx.clearRect(0, 0, coverCanvas.width, coverCanvas.height);
+        coverCtx.drawImage(img, 0, 0, coverCanvas.width, coverCanvas.height);
+        refreshCoverPixels();
+        rebuildGiftInnerParticles();
+        resolve();
+      };
+      img.onerror = function () { reject(new Error('封面加载失败')); };
+      img.src = art;
+    });
+  }
+
+  function renderPixelFrame() {
+    const w = coatCanvas.width;
+    const h = coatCanvas.height;
+    coatCtx.globalCompositeOperation = 'source-over';
+    coatCtx.globalAlpha = 1;
+    coatCtx.clearRect(0, 0, w, h);
+    for (const c of circles) {
+      coatCtx.beginPath();
+      coatCtx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+      coatCtx.fillStyle = c.color;
+      coatCtx.fill();
+    }
+  }
+
+  function initPixelCoat() {
+    grid.clear();
+    circles = [];
+    nextCircleId = 1;
+    const w = coatCanvas.width;
+    const h = coatCanvas.height;
+    const cx = w / 2;
+    const cy = h / 2;
+    const r = rootCircleRadius();
+    pixelAreaDenom = Math.PI * r * r;
+    pixelSampleTick = 0;
+    const c0 = {
+      id: nextCircleId++,
+      x: cx,
+      y: cy,
+      r: r,
+      color: '#d8d8e0',
+      _cells: null
+    };
+    circles.push(c0);
+    addCircleToGrid(c0);
+    renderPixelFrame();
+  }
+
+  function buildFogTexture() {
+    const w = coatCanvas.width;
+    const h = coatCanvas.height;
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const x = c.getContext('2d');
+    x.save();
+    x.filter = `blur(${FOG_BLUR}px)`;
+    x.drawImage(coverCanvas, 0, 0, w, h);
+    x.restore();
+    x.fillStyle = 'rgba(255, 255, 255, 0.22)';
+    x.fillRect(0, 0, w, h);
+    fogTexture = c;
+  }
+
+  function initFogCoat() {
+    buildFogTexture();
+    coatCtx.globalCompositeOperation = 'source-over';
+    coatCtx.globalAlpha = 1;
+    coatCtx.clearRect(0, 0, coatCanvas.width, coatCanvas.height);
+    coatCtx.drawImage(fogTexture, 0, 0);
+  }
+
+  function initScratchCoat() {
+    const w = coatCanvas.width;
+    const h = coatCanvas.height;
+    coatCtx.save();
+    coatCtx.globalCompositeOperation = 'source-over';
+    coatCtx.globalAlpha = 1;
+    coatCtx.clearRect(0, 0, w, h);
+    const lg = coatCtx.createLinearGradient(0, 0, w, h);
+    lg.addColorStop(0, '#e4e7ef');
+    lg.addColorStop(0.45, '#b9becd');
+    lg.addColorStop(1, '#dcdfe8');
+    coatCtx.fillStyle = lg;
+    coatCtx.fillRect(0, 0, w, h);
+    coatCtx.globalAlpha = 0.4;
+    for (let i = 0; i < 160; i++) {
+      coatCtx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.05)';
+      coatCtx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+    }
+    coatCtx.restore();
+  }
+
+  function teardownPolaroidDevMotion() {
+    if (polaroidMotionAttached) {
+      window.removeEventListener('devicemotion', onPolaroidDeviceMotion, { passive: true });
+      polaroidMotionAttached = false;
+    }
+    polaroidMotionPending = false;
+    polaroidLastShakeAt = 0;
+  }
+
+  function attachPolaroidDevMotion() {
+    if (polaroidMotionAttached || effect !== 'polaroid') return;
+    window.addEventListener('devicemotion', onPolaroidDeviceMotion, { passive: true });
+    polaroidMotionAttached = true;
+  }
+
+  function ensurePolaroidMotionFromUserGesture() {
+    if (polaroidMotionAttached || effect !== 'polaroid' || revealed || locked) return;
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) return;
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+      if (polaroidMotionPending) return;
+      polaroidMotionPending = true;
+      DeviceMotionEvent.requestPermission()
+        .then(function (state) {
+          polaroidMotionPending = false;
+          if (state === 'granted') attachPolaroidDevMotion();
+        })
+        .catch(function () {
+          polaroidMotionPending = false;
+        });
+    } else {
+      attachPolaroidDevMotion();
+    }
+  }
+
+  function onPolaroidDeviceMotion(e) {
+    if (effect !== 'polaroid' || revealed || locked) return;
+    const now = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
+    if (now - polaroidLastShakeAt < 72) return;
+    polaroidLastShakeAt = now;
+    let ax = 0;
+    let ay = 0;
+    let az = 0;
+    const ac = e.acceleration;
+    if (ac && (ac.x != null || ac.y != null || ac.z != null)) {
+      ax = ac.x || 0;
+      ay = ac.y || 0;
+      az = ac.z || 0;
+    } else {
+      const g = e.accelerationIncludingGravity;
+      if (!g) return;
+      ax = g.x || 0;
+      ay = g.y || 0;
+      az = g.z || 0;
+    }
+    const mag = Math.sqrt(ax * ax + ay * ay + az * az);
+    if (mag < 4.5) return;
+    polaroidEnergy = Math.min(POLAROID_MAX, polaroidEnergy + POLAROID_SHAKE * ((mag - 4.5) / 8));
+    drawPolaroidCoat();
+    if (polaroidEnergy >= POLAROID_MAX) triggerReveal();
+  }
+
+  function buildPolaroidVeil() {
+    const w = coatCanvas.width;
+    const h = coatCanvas.height;
+    if (polaroidVeil && polaroidVeilW === w && polaroidVeilH === h) return;
+    polaroidVeilW = w;
+    polaroidVeilH = h;
+    if (!polaroidVeil) polaroidVeil = document.createElement('canvas');
+    polaroidVeil.width = w;
+    polaroidVeil.height = h;
+    const vx = polaroidVeil.getContext('2d');
+    const cx = w / 2;
+    const cy = h / 2;
+    const rm = Math.max(w, h) * 0.68;
+    vx.clearRect(0, 0, w, h);
+    const lg = vx.createLinearGradient(0, 0, w, h);
+    lg.addColorStop(0, '#f7f3ec');
+    lg.addColorStop(0.38, '#ebe3d6');
+    lg.addColorStop(0.72, '#ddd2c2');
+    lg.addColorStop(1, '#e9e1d4');
+    vx.fillStyle = lg;
+    vx.fillRect(0, 0, w, h);
+    const vg = vx.createRadialGradient(cx, cy, rm * 0.12, cx, cy, rm);
+    vg.addColorStop(0, 'rgba(255,255,255,0.08)');
+    vg.addColorStop(0.5, 'rgba(115,98,82,0.14)');
+    vg.addColorStop(1, 'rgba(72,58,48,0.32)');
+    vx.fillStyle = vg;
+    vx.fillRect(0, 0, w, h);
+    vx.globalAlpha = 0.16;
+    for (let i = 0; i < 3800; i++) {
+      vx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.85)' : 'rgba(35,28,22,0.22)';
+      vx.fillRect(Math.random() * w, Math.random() * h, 1, 1);
+    }
+    vx.globalAlpha = 1;
+  }
+
+  function drawPolaroidCoat() {
+    const w = coatCanvas.width;
+    const h = coatCanvas.height;
+    buildPolaroidVeil();
+    const t = Math.min(1, polaroidEnergy / POLAROID_MAX);
+    coatCtx.globalCompositeOperation = 'source-over';
+    coatCtx.clearRect(0, 0, w, h);
+    coatCtx.globalAlpha = Math.max(0, 1 - t);
+    coatCtx.drawImage(polaroidVeil, 0, 0);
+    coatCtx.globalAlpha = 1;
+  }
+
+  function initPolaroidCoat() {
+    polaroidEnergy = 0;
+    grid.clear();
+    circles = [];
+    nextCircleId = 1;
+    pixelAreaDenom = 0;
+    coatCtx.globalCompositeOperation = 'source-over';
+    coatCtx.globalAlpha = 1;
+    buildPolaroidVeil();
+    drawPolaroidCoat();
+  }
+
+  function syncPuzzleUI() {
+    const isP = effect === 'puzzle';
+    puzzleLayer.classList.toggle('is-on', isP);
+    puzzleLayer.setAttribute('aria-hidden', isP ? 'false' : 'true');
+    if (isP) {
+      coatCanvas.style.display = 'none';
+    } else {
+      coatCanvas.style.display = '';
+    }
+  }
+
+  function drawPuzzlePiece(cv, pieceId) {
+    const ctx = cv.getContext('2d');
+    const w = coverCanvas.width;
+    const h = coverCanvas.height;
+    const cw = Math.max(1, Math.floor(w / 3));
+    const ch = Math.max(1, Math.floor(h / 3));
+    const col = pieceId % 3;
+    const row = Math.floor(pieceId / 3);
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(coverCanvas, col * cw, row * ch, cw, ch, 0, 0, cv.width, cv.height);
+  }
+
+  function isPuzzleSolved() {
+    if (!puzzleBoard) return false;
+    for (let i = 0; i < 9; i++) {
+      if (puzzleBoard[i] !== i) return false;
+    }
+    return true;
+  }
+
+  function refreshPuzzleSlot(slotIndex) {
+    const slot = puzzleSlots[slotIndex];
+    if (!slot) return;
+    const cv = slot.querySelector('canvas');
+    if (cv) drawPuzzlePiece(cv, puzzleBoard[slotIndex]);
+  }
+
+  function tearDownPuzzle() {
+    puzzleGrid.innerHTML = '';
+    puzzleSlots = [];
+    puzzleBoard = null;
+    puzzleDrag = null;
+    puzzleLayer.classList.remove('puzzle-solved');
+  }
+
+  function initPuzzleBoard() {
+    tearDownPuzzle();
+    puzzleBoard = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    shuffle(puzzleBoard);
+    while (isPuzzleSolved()) {
+      shuffle(puzzleBoard);
+    }
+    const cw = Math.max(2, Math.floor(coverCanvas.width / 3));
+    const ch = Math.max(2, Math.floor(coverCanvas.height / 3));
+    for (let s = 0; s < 9; s++) {
+      const slot = document.createElement('div');
+      slot.className = 'puzzle-slot';
+      slot.dataset.slot = String(s);
+      const cv = document.createElement('canvas');
+      cv.className = 'puzzle-tile-canvas';
+      cv.width = cw;
+      cv.height = ch;
+      slot.appendChild(cv);
+      drawPuzzlePiece(cv, puzzleBoard[s]);
+      slot.addEventListener('pointerdown', onPuzzlePointerDown);
+      slot.addEventListener('pointerup', onPuzzlePointerUp);
+      slot.addEventListener('pointercancel', onPuzzlePointerCancel);
+      puzzleGrid.appendChild(slot);
+      puzzleSlots.push(slot);
+    }
+  }
+
+  function onPuzzlePointerDown(e) {
+    if (locked || revealed || effect !== 'puzzle' || !puzzleBoard) return;
+    const slot = e.currentTarget;
+    if (!slot.classList.contains('puzzle-slot')) return;
+    e.preventDefault();
+    tryPlayAudio();
+    const s = +slot.dataset.slot;
+    if (puzzleDrag !== null) return;
+    puzzleDrag = { fromSlot: s, pointerId: e.pointerId };
+    slot.classList.add('puzzle-slot--selected');
+    try {
+      slot.setPointerCapture(e.pointerId);
+    } catch (_) {}
+  }
+
+  function onPuzzlePointerUp(e) {
+    if (!puzzleDrag || effect !== 'puzzle' || !puzzleBoard) return;
+    const from = puzzleDrag.fromSlot;
+    const slotEl = puzzleSlots[from];
+    if (slotEl) {
+      try {
+        slotEl.releasePointerCapture(e.pointerId);
+      } catch (_) {}
+      slotEl.classList.remove('puzzle-slot--selected');
+    }
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    const target = under && under.closest && under.closest('.puzzle-slot');
+    if (target && puzzleBoard) {
+      const to = +target.dataset.slot;
+      if (to !== from) {
+        const tmp = puzzleBoard[from];
+        puzzleBoard[from] = puzzleBoard[to];
+        puzzleBoard[to] = tmp;
+        refreshPuzzleSlot(from);
+        refreshPuzzleSlot(to);
+        if (isPuzzleSolved()) {
+          triggerReveal();
+        }
+      }
+    }
+    puzzleDrag = null;
+  }
+
+  function onPuzzlePointerCancel(e) {
+    if (!puzzleDrag) return;
+    const from = puzzleDrag.fromSlot;
+    const slotEl = puzzleSlots[from];
+    if (slotEl) {
+      try {
+        slotEl.releasePointerCapture(e.pointerId);
+      } catch (_) {}
+      slotEl.classList.remove('puzzle-slot--selected');
+    }
+    puzzleDrag = null;
+  }
+
+  function resetEffect() {
+    teardownPolaroidDevMotion();
+    stopRaf();
+    coatCanvas.classList.remove('reveal-fade');
+    coatCtx.globalCompositeOperation = 'source-over';
+    coatCtx.globalAlpha = 1;
+    syncPuzzleUI();
+    if (effect === 'puzzle') {
+      stopRaf();
+      tearDownPuzzle();
+      initPuzzleBoard();
+      return;
+    }
+    tearDownPuzzle();
+    coatCanvas.style.display = '';
+    if (effect === 'pixel') {
+      initPixelCoat();
+    } else if (effect === 'fog') {
+      initFogCoat();
+    } else if (effect === 'polaroid') {
+      initPolaroidCoat();
+    } else {
+      initScratchCoat();
+    }
+    if (effect !== 'polaroid') {
+      startRaf();
+    }
+  }
+
+  function stopRaf() {
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = 0;
+    }
+  }
+
+  function startRaf() {
+    function tick() {
+      if (revealed || effect === 'puzzle') {
+        rafId = 0;
+        return;
+      }
+      if (effect === 'pixel') {
+        renderPixelFrame();
+      }
+      if (effect === 'fog' || effect === 'scratch') {
+        fogCheckFrame++;
+        if (fogCheckFrame % 5 === 0) {
+          const ratio = sampleFogClearRatio();
+          if (ratio >= REVEAL_PROGRESS) triggerReveal();
+        }
+      }
+      rafId = requestAnimationFrame(tick);
+    }
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function candidateIdsAt(px, py) {
+    const ids = new Set();
+    const span = BRUSH + (effect === 'pixel' ? rootCircleRadius() : FOG_BRUSH + 4);
+    const minIx = Math.floor((px - span) / CELL);
+    const maxIx = Math.floor((px + span) / CELL);
+    const minIy = Math.floor((py - span) / CELL);
+    const maxIy = Math.floor((py + span) / CELL);
+    for (let ix = minIx; ix <= maxIx; ix++) {
+      for (let iy = minIy; iy <= maxIy; iy++) {
+        const s = grid.get(cellKey(ix, iy));
+        if (!s) continue;
+        s.forEach(function (id) { ids.add(id); });
+      }
+    }
+    return ids;
+  }
+
+  function dist(ax, ay, bx, by) {
+    const dx = ax - bx;
+    const dy = ay - by;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  function splitCircleAt(px, py) {
+    let splits = 0;
+    let pass = 0;
+    while (splits < MAX_SPLITS_PER_MOVE && pass < 24) {
+      pass++;
+      const ids = candidateIdsAt(px, py);
+      const toProcess = [];
+      for (const id of ids) {
+        const c = circles.find(function (x) { return x.id === id; });
+        if (c) toProcess.push(c);
+      }
+      toProcess.sort(function (a, b) { return b.r - a.r; });
+      let changed = false;
+
+      for (const c of toProcess) {
+        if (splits >= MAX_SPLITS_PER_MOVE) break;
+        if (dist(px, py, c.x, c.y) > BRUSH + c.r) continue;
+
+        if (c.r <= MIN_R) {
+          removeCircleFromGrid(c);
+          circles = circles.filter(function (x) { return x.id !== c.id; });
+          splits++;
+          changed = true;
+          continue;
+        }
+
+        removeCircleFromGrid(c);
+        circles = circles.filter(function (x) { return x.id !== c.id; });
+
+        const nr = (c.r / 2) * CHILD_SCALE;
+        const offsets = [
+          [-c.r / 2, -c.r / 2],
+          [c.r / 2, -c.r / 2],
+          [-c.r / 2, c.r / 2],
+          [c.r / 2, c.r / 2]
+        ];
+        for (let i = 0; i < 4; i++) {
+          const nx = c.x + offsets[i][0];
+          const ny = c.y + offsets[i][1];
+          const col = rgbAt(nx, ny);
+          const child = {
+            id: nextCircleId++,
+            x: nx,
+            y: ny,
+            r: nr,
+            color: col,
+            _cells: null
+          };
+          circles.push(child);
+          addCircleToGrid(child);
+        }
+        splits++;
+        changed = true;
+      }
+      if (!changed) break;
+    }
+  }
+
+  function strokeFogLine(x0, y0, x1, y1) {
+    coatCtx.save();
+    coatCtx.globalCompositeOperation = 'destination-out';
+    const steps = Math.max(1, Math.ceil(dist(x0, y0, x1, y1) / 6));
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const x = x0 + (x1 - x0) * t;
+      const y = y0 + (y1 - y0) * t;
+      const g = coatCtx.createRadialGradient(x, y, 0, x, y, FOG_BRUSH);
+      g.addColorStop(0, 'rgba(0,0,0,1)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      coatCtx.fillStyle = g;
+      coatCtx.beginPath();
+      coatCtx.arc(x, y, FOG_BRUSH, 0, Math.PI * 2);
+      coatCtx.fill();
+    }
+    coatCtx.restore();
+  }
+
+  function sampleFogClearRatio() {
+    const w = coatCanvas.width;
+    const h = coatCanvas.height;
+    const stepX = Math.max(1, Math.floor(w / 32));
+    const stepY = Math.max(1, Math.floor(h / 32));
+    let total = 0;
+    let clear = 0;
+    const data = coatCtx.getImageData(0, 0, w, h).data;
+    const alphaThreshold = 12;
+    for (let y = 0; y < h; y += stepY) {
+      for (let x = 0; x < w; x += stepX) {
+        const idx = (Math.floor(y) * w + Math.floor(x)) * 4 + 3;
+        total++;
+        if (data[idx] <= alphaThreshold) clear++;
+      }
+    }
+    return total ? clear / total : 1;
+  }
+
+  function checkCircleProgress() {
+    if (revealed || locked || effect !== 'pixel') return;
+    if (circles.length === 0) {
+      triggerReveal();
+      return;
+    }
+    if (circleProgress() >= REVEAL_PROGRESS) {
+      triggerReveal();
+      return;
+    }
+    pixelSampleTick++;
+    if (pixelSampleTick % 3 !== 0) return;
+    if (samplePixelCoatClearRatio() >= REVEAL_PROGRESS) {
+      triggerReveal();
+    }
+  }
+
+  function triggerReveal() {
+    if (revealed || locked) return;
+    puzzleDrag = null;
+    for (let i = 0; i < puzzleSlots.length; i++) {
+      if (puzzleSlots[i]) puzzleSlots[i].classList.remove('puzzle-slot--selected');
+    }
+    revealed = true;
+    locked = true;
+    stopRaf();
+    teardownPolaroidDevMotion();
+    if (effect === 'puzzle') {
+      puzzleLayer.classList.add('puzzle-solved');
+    }
+    coatCanvas.classList.add('reveal-fade');
+    hintSubEl.textContent = '';
+
+    hintEl.classList.add('f-out');
+    window.setTimeout(function () {
+      hintEl.innerHTML = formatBlessingMessageHTML(pickRandomBlessing());
+      hintEl.classList.remove('f-out');
+      hintEl.classList.add('f-in');
+      window.requestAnimationFrame(function () {
+        hintEl.classList.remove('f-in');
+      });
+    }, 300);
+
+    trackEl.textContent = '';
+    const r = results[resultIndex];
+    if (r) {
+      trackEl.innerHTML =
+        '<div class="name"></div><div class="artist"></div>';
+      trackEl.querySelector('.name').textContent = r.trackName || '';
+      trackEl.querySelector('.artist').textContent = r.artistName || '';
+    }
+    if (textColBottom) textColBottom.classList.add('show');
+    /* 等祝福语替换/渐显后再露出切歌箭头，避免与交互过程重叠 */
+    window.setTimeout(function () {
+      syncTrackNavVisibility();
+    }, 420);
+  }
+
+  function resetUIForNewTrack() {
+    revealed = false;
+    locked = false;
+    effect = pickRandomEffect();
+    coatCanvas.classList.remove('reveal-fade');
+    hintEl.classList.remove('f-out', 'f-in');
+    if (textColBottom) textColBottom.classList.remove('show');
+    trackEl.textContent = '';
+    fogCheckFrame = 0;
+    refreshHints();
+    resetEffect();
+    syncTrackNavVisibility();
+  }
+
+  async function advanceTrack(opts) {
+    opts = opts || {};
+    raiseShield();
+    try {
+      if (opts.newStyle) {
+        pickNextKeyword();
+        await loadTrackList();
+        resultIndex = 0;
+      } else if (results.length === 0) {
+        await loadTrackList();
+        resultIndex = 0;
+      } else {
+        resultIndex++;
+        if (resultIndex >= results.length) {
+          pickNextKeyword();
+          await loadTrackList();
+          resultIndex = 0;
+        }
+      }
+      const r = results[resultIndex];
+      await applyTrack(r);
+      bgm.src = r.previewUrl;
+      try {
+        if (wasPlaying || hasStartedAudio) {
+          await bgm.play();
+          wasPlaying = true;
+        }
+      } catch (_) {}
+      resetUIForNewTrack();
+      syncTrackNavVisibility();
+    } finally {
+      lowerShield();
+    }
+  }
+
+  function canvasPoint(e) {
+    const rect = coatCanvas.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * coatCanvas.width;
+    const y = ((e.clientY - rect.top) / rect.height) * coatCanvas.height;
+    return { x: x, y: y };
+  }
+
+  function unlockAudioSilently() {
+    if (audioUnlocked) return;
+    audioUnlocked = true;
+    if (!bgm.src) return;
+    const v = bgm.volume;
+    bgm.volume = 0;
+    const p = bgm.play();
+    if (p && typeof p.then === 'function') {
+      p.then(function () {
+        bgm.pause();
+        bgm.currentTime = 0;
+        bgm.volume = v;
+      }).catch(function () {
+        bgm.volume = v;
+      });
+    } else {
+      try {
+        bgm.play();
+        bgm.pause();
+        bgm.currentTime = 0;
+      } catch (_) {}
+      bgm.volume = v;
+    }
+  }
+
+  function tryPlayAudio() {
+    unlockAudioSilently();
+    if (bgm.muted) return;
+    hasStartedAudio = true;
+    bgm.play().catch(function () {});
+  }
+
+  function syncMuteUI() {
+    btnMute.classList.toggle('is-muted', bgm.muted);
+    btnMute.setAttribute('aria-pressed', bgm.muted ? 'true' : 'false');
+    btnMute.setAttribute('aria-label', bgm.muted ? '取消静音' : '静音');
+    btnMute.title = bgm.muted ? '取消静音' : '静音';
+  }
+
+  function eraseAt(x, y, linkLine) {
+    if (effect === 'polaroid') return;
+    if (effect === 'pixel') {
+      splitCircleAt(x, y);
+      renderPixelFrame();
+      checkCircleProgress();
+    } else if (effect === 'fog' || effect === 'scratch') {
+      if (linkLine) strokeFogLine(lastX, lastY, x, y);
+      else strokeFogLine(x, y, x, y);
+    }
+    lastX = x;
+    lastY = y;
+  }
+
+  function onPointerDown(e) {
+    if (locked || effect === 'puzzle') return;
+    if (effect === 'polaroid') {
+      e.preventDefault();
+      tryPlayAudio();
+      ensurePolaroidMotionFromUserGesture();
+      coatCanvas.setPointerCapture(e.pointerId);
+      pointerDown = true;
+      polaroidEnergy = Math.min(POLAROID_MAX, polaroidEnergy + POLAROID_TAP);
+      drawPolaroidCoat();
+      if (polaroidEnergy >= POLAROID_MAX) triggerReveal();
+      return;
+    }
+    e.preventDefault();
+    coatCanvas.setPointerCapture(e.pointerId);
+    pointerDown = true;
+    coatGestureKind = null;
+    coatGestureSX = e.clientX;
+    coatGestureSY = e.clientY;
+    coatDownCanvasP = canvasPoint(e);
+    lastX = coatDownCanvasP.x;
+    lastY = coatDownCanvasP.y;
+    tryPlayAudio();
+  }
+
+  function onPointerMove(e) {
+    if (locked || effect === 'puzzle') return;
+    if (effect === 'polaroid') {
+      if (!pointerDown) return;
+      e.preventDefault();
+      polaroidEnergy = Math.min(POLAROID_MAX, polaroidEnergy + POLAROID_DRAG);
+      drawPolaroidCoat();
+      if (polaroidEnergy >= POLAROID_MAX) triggerReveal();
+      return;
+    }
+    const ho = useHoverErase();
+    if (ho) {
+      e.preventDefault();
+      const p = canvasPoint(e);
+      tryPlayAudio();
+      eraseAt(p.x, p.y, true);
+      return;
+    }
+    if (!pointerDown) return;
+    e.preventDefault();
+
+    if (coatGestureKind === null && coatDownCanvasP) {
+      const dx = e.clientX - coatGestureSX;
+      const dy = e.clientY - coatGestureSY;
+      if (dx * dx + dy * dy >= 12 * 12) {
+        coatGestureKind = 'erase';
+        eraseAt(coatDownCanvasP.x, coatDownCanvasP.y, false);
+        lastX = coatDownCanvasP.x;
+        lastY = coatDownCanvasP.y;
+        const p = canvasPoint(e);
+        eraseAt(p.x, p.y, true);
+        return;
+      }
+      return;
+    }
+    const p = canvasPoint(e);
+    eraseAt(p.x, p.y, true);
+  }
+
+  function onPointerUp(e) {
+    if (effect === 'polaroid') {
+      pointerDown = false;
+      try { coatCanvas.releasePointerCapture(e.pointerId); } catch (_) {}
+      return;
+    }
+    if (pointerDown && coatGestureKind === null && coatDownCanvasP) {
+      const dx = e.clientX - coatGestureSX;
+      const dy = e.clientY - coatGestureSY;
+      if (dx * dx + dy * dy < 4 * 4) {
+        eraseAt(coatDownCanvasP.x, coatDownCanvasP.y, false);
+      }
+    }
+    pointerDown = false;
+    coatGestureKind = null;
+    coatDownCanvasP = null;
+    try { coatCanvas.releasePointerCapture(e.pointerId); } catch (_) {}
+  }
+
+  coatCanvas.addEventListener('pointerenter', function (e) {
+    if (locked || effect === 'puzzle') return;
+    const p = canvasPoint(e);
+    lastX = p.x;
+    lastY = p.y;
+  });
+
+  coatCanvas.addEventListener('pointerdown', onPointerDown, { passive: false });
+  coatCanvas.addEventListener('pointermove', onPointerMove, { passive: false });
+  coatCanvas.addEventListener('pointerup', onPointerUp);
+  coatCanvas.addEventListener('pointercancel', onPointerUp);
+
+  bgm.addEventListener('play', function () { wasPlaying = true; });
+  bgm.addEventListener('pause', function () { wasPlaying = false; });
+
+  let giftInnerFxAudioNudgeAt = 0;
+  bgm.addEventListener('timeupdate', function () {
+    const wrap = document.getElementById('giftInnerFx');
+    if (!wrap || !giftRoot.classList.contains('is-revealed')) return;
+    const now = Date.now();
+    if (now - giftInnerFxAudioNudgeAt < 420) return;
+    giftInnerFxAudioNudgeAt = now;
+    const ct = bgm.currentTime || 0;
+    const ph = (Math.sin(ct * 2.04) * 0.5 + 0.5);
+    wrap.style.setProperty('--alb-audio', ph.toFixed(4));
+  });
+
+  function revealGiftFromPrelude() {
+    giftRoot.classList.add('is-revealed');
+    giftRoot.setAttribute('aria-hidden', 'false');
+    if (shouldOpenCardInDarkMode()) {
+      document.documentElement.classList.add('card-dark');
+    } else {
+      document.documentElement.classList.remove('card-dark');
+    }
+  }
+
+  function hideEnvelopeOverlayCompletely() {
+    envelopeOverlay.classList.remove('is-hiding');
+    if (envFoldScene) envFoldScene.classList.remove('is-exit-fade-up');
+    envelopeOverlay.style.display = 'none';
+    envelopeOverlay.setAttribute('aria-hidden', 'true');
+    document.documentElement.classList.remove('env-prelude');
+    try {
+      if (effect === 'puzzle' && puzzleGrid) {
+        puzzleGrid.setAttribute('tabindex', '-1');
+        puzzleGrid.focus({ preventScroll: true });
+      } else {
+        coatCanvas.focus({ preventScroll: true });
+      }
+    } catch (_) {}
+  }
+
+  /** 无动画兜底（例如 DOM 异常）：淡隐后移除信封层 */
+  function finishEnvelopeRevealInner() {
+    const m = latestEnvelopeTheme.motion || {};
+    const fadeMs = typeof m.overlayFadeMs === 'number' ? m.overlayFadeMs : 720;
+    revealGiftFromPrelude();
+    envelopeOverlay.classList.add('is-hiding');
+    window.setTimeout(function () {
+      hideEnvelopeOverlayCompletely();
+    }, fadeMs);
+  }
+
+  function preludePrefersReducedMotion() {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  function beginEnvelopeFold() {
+    if (envelopeDone) return;
+    envelopeDone = true;
+    unlockAudioSilently();
+    envelopeOpen.disabled = true;
+    const flap = envFoldFlap;
+    if (!flap || !envelopeOverlay) {
+      finishEnvelopeRevealInner();
+      return;
+    }
+    flap.classList.add('is-hiding');
+    if (preludePrefersReducedMotion()) {
+      window.setTimeout(function () {
+        revealGiftFromPrelude();
+        hideEnvelopeOverlayCompletely();
+      }, 140);
+      return;
+    }
+    window.setTimeout(function () {
+      revealGiftFromPrelude();
+      let settled = false;
+      function settle() {
+        if (settled) return;
+        settled = true;
+        if (envFoldScene) {
+          envFoldScene.removeEventListener('transitionend', onSceneTransitionEnd);
+        }
+        window.clearTimeout(fallbackTimer);
+        hideEnvelopeOverlayCompletely();
+      }
+      function onSceneTransitionEnd(ev) {
+        if (!envFoldScene || ev.target !== envFoldScene) return;
+        if (ev.propertyName !== 'opacity' && ev.propertyName !== 'transform') return;
+        settle();
+      }
+      if (envFoldScene) {
+        envFoldScene.addEventListener('transitionend', onSceneTransitionEnd);
+      }
+      const fallbackTimer = window.setTimeout(settle, 1100);
+      window.requestAnimationFrame(function () {
+        window.requestAnimationFrame(function () {
+          if (envFoldScene) envFoldScene.classList.add('is-exit-fade-up');
+        });
+      });
+    }, 220);
+  }
+
+  envelopeOpen.addEventListener('click', function (e) {
+    e.preventDefault();
+    beginEnvelopeFold();
+  });
+
+  btnMute.addEventListener('click', function (e) {
+    e.preventDefault();
+    unlockAudioSilently();
+    bgm.muted = !bgm.muted;
+    syncMuteUI();
+    if (!bgm.muted && bgm.src) {
+      hasStartedAudio = true;
+      bgm.play().catch(function () {});
+    }
+  });
+
+  if (btnTrackPrev) {
+    btnTrackPrev.addEventListener('click', function (e) {
+      e.preventDefault();
+      goPrevTrack();
+    });
+  }
+  if (btnTrackNext) {
+    btnTrackNext.addEventListener('click', function (e) {
+      e.preventDefault();
+      goNextTrackFromArrow();
+    });
+  }
+
+  window.addEventListener('resize', function () {
+    const r = results[resultIndex];
+    if (!r) {
+      resizeCanvases();
+      return;
+    }
+    applyTrack(r).then(function () {
+      if (revealed) {
+        coatCtx.clearRect(0, 0, coatCanvas.width, coatCanvas.height);
+        coatCanvas.classList.add('reveal-fade');
+        stopRaf();
+      } else {
+        raiseShield();
+        resetEffect();
+        lowerShield();
+      }
+    }).catch(function () {});
+  });
+
+  function setGiftFootDate() {
+    const el = document.getElementById('giftFootDate');
+    if (!el) return;
+    const d = new Date();
+    el.setAttribute('datetime', d.toISOString().slice(0, 10));
+    el.textContent = new Intl.DateTimeFormat('zh-Hans', {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+    }).format(d);
+  }
+
+  function boot() {
+    setGiftFootDate();
+    setupParticles();
+    syncMuteUI();
+    mHoverFine.addEventListener('change', refreshHints);
+    document.documentElement.classList.add('env-prelude');
+    window.requestAnimationFrame(function () {
+      const pv = document.querySelector('.env-prelude-visual');
+      if (pv) pv.getBoundingClientRect();
+    });
+    loadEnvelopeTheme()
+      .then(function (theme) {
+        applyEnvelopeTheme(theme);
+        resizeCanvases();
+        return loadTrackList();
+      })
+      .then(function () {
+        return advanceTrack();
+      })
+      .catch(function (err) {
+        console.error(err);
+        document.documentElement.classList.remove('env-prelude');
+        applyEnvelopeTheme(DEFAULT_ENV_THEME);
+        if (envTitle) envTitle.textContent = '加载失败';
+        if (envLede) envLede.textContent = err.message || String(err);
+        if (envFoot) envFoot.textContent = '请刷新或检查网络';
+        if (envKicker) envKicker.textContent = '';
+        lowerShield();
+      });
+  }
+
+  boot();
+})();
+  </script>
+</body>
+</html>

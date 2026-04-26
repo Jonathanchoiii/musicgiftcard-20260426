@@ -1,0 +1,22 @@
+{
+  "reference": "Ticket-style prelude: cover under flap, Space Mono copy, fold-open into main card.",
+  "palette": {
+    "bg": "#121212",
+    "fg": "#e8e4dc",
+    "muted": "rgba(232, 228, 220, 0.58)",
+    "line": "rgba(232, 228, 220, 0.12)",
+    "accent": "#e8e4dc"
+  },
+  "copy": {
+    "kicker": "好友赠礼",
+    "title": "你有一封音乐贺卡",
+    "lede": "点击下方按钮，开始阅读",
+    "foot": "点击开始",
+    "sealGlyph": ""
+  },
+  "motion": {
+    "openMs": 2500,
+    "overlayFadeMs": 720
+  },
+  "cardAfterOpen": "match-prelude"
+}
